@@ -1,191 +1,325 @@
+# LutinLens
 
-# 🌟 New release: v1.9.1 🌟
-### Take a look at what has changed [here](https://github.com/iakmds/librecamera/releases/tag/v1.9.1)!
+一个基于Flutter开发的自由开源Android相机应用程序。
 
-<br><br>
+## 项目简介
 
-<p>
-  <a href="https://github.com/iakmds/librecamera/releases/latest" alt="Release">
-  <img src="https://img.shields.io/github/v/release/iakmds/librecamera?style=flat-square" /></a>
+LutinLens是一个注重隐私保护的相机应用，具有以下特点：
+- 前后摄像头拍照和录像功能
+- 默认不保存EXIF元数据，保护隐私
+- 无广告、无追踪、无不必要权限
+- 支持多种语言本地化
+- 完全开源，基于GPL-3.0许可证
 
-  <a href="https://f-droid.org/packages/com.iakmds.librecamera" alt="F-Droid">
-  <img src="https://img.shields.io/f-droid/v/com.iakmds.librecamera?style=flat-square" /></a>
+## 系统要求
 
-  <a href="https://github.com/iakmds/librecamera/issues" alt="Issues">
-  <img src="https://img.shields.io/github/issues/iakmds/librecamera?style=flat-square" /></a>
+- **目标平台**: Android设备
+- **开发环境**: 
+  - Flutter SDK 3.16.0+
+  - Dart SDK 3.2.0+
+  - Java JDK 17
+  - Android SDK
+  - Git
 
-  <a href="https://github.com/iakmds/librecamera/pulls" alt="Pull requests">
-  <img src="https://img.shields.io/github/issues-pr/iakmds/librecamera?style=flat-square" /></a>
+## 编译安装指南
 
-  <a href="https://github.com/iakmds/librecamera/contributors" alt="Contributors">
-  <img src="https://img.shields.io/github/contributors/iakmds/librecamera?style=flat-square" /></a>
+### 方法一：使用 Nix (macOS/nix-darwin)
 
-  <a href="https://github.com/iakmds/librecamera/network/members" alt="Forks">
-  <img src="https://img.shields.io/github/forks/iakmds/librecamera?style=flat-square" /></a>
+#### 前置要求
 
-  <a href="https://github.com/iakmds/librecamera/stargazers" alt="Stars">
-  <img src="https://img.shields.io/github/stars/iakmds/librecamera?style=flat-square" /></a>
+1. **安装 Nix 包管理器**：
+   ```bash
+   curl -L https://nixos.org/nix/install | sh
+   ```
 
-  <a href="https://github.com/iakmds/librecamera/blob/master/LICENSE" alt="License">
-  <img src="https://img.shields.io/github/license/iakmds/librecamera?style=flat-square" /></a>
-  
-  <a href="https://hosted.weblate.org/engage/librecamera/">
-  <img src="https://hosted.weblate.org/widgets/librecamera/-/svg-badge.svg" alt="Translation status" /></a>
-</p>
+2. **启用 Flakes 支持**：
+   ```bash
+   mkdir -p ~/.config/nix
+   echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+   ```
 
-<p align="center">
-  <a href="https://github.com/iakmds/librecamera">
-    <img src="https://github.com/iakmds/librecamera/blob/master/fastlane/metadata/android/en-US/images/icon.png" alt="Libre Camera app icon" height="128">
-  </a>
-</p>
+3. **手动安装 Flutter SDK**：
+   ```bash
+   git clone https://github.com/flutter/flutter.git -b 3.24.0 ~/.flutter-sdk
+   ```
 
-<h1 align="center">Libre Camera</h1>
-<p align="center">A free and open source camera app for Android written in Flutter and Dart licensed under the <a href="LICENSE">GPLv3</a></p>
+4. **安装 Android Studio 和 SDK**：
+   - 下载并安装 [Android Studio](https://developer.android.com/studio)
+   - 通过 Android Studio SDK Manager 安装：
+     - Android SDK Platform-Tools
+     - Android SDK Build-Tools
+     - Android API 34 (或更高版本)
 
-<p align="center">
-    <a href="https://f-droid.org/packages/com.iakmds.librecamera">
-    <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">
-  </a>
-</p>
+#### 编译步骤
 
-<details open="open">
-  <summary><h2 style="display: inline-block">Table of Contents</h2></summary>
-  <ol>
-    <li>
-      About Libre Camera
-      <ul>
-        <li><a href="#screenshots">Screenshots</a></li>
-        <li><a href="#download">Download</a></li>
-        <li><a href="#features">Features</a></li>
-      </ul>
-    </li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li>
-      <a href="#contributing">Contributing</a>
-      <ul>
-        <li><a href="#translate">Translate</a></li>
-        <li><a href="#bug-reporting-or-feature-requests">Bug reporting or feature requests</a></li>
-        <li><a href="#code">Code</a></li>
-      </ul>
-    </li>
-    <li><a href="#packages-used">Packages used</a></li>
-    <li><a href="#license">License</a></li>
-  </ol>
-</details>
+1. **克隆项目**：
+   ```bash
+   git clone https://github.com/KirisameLonnet/LutinLens.git
+   cd LutinLens
+   ```
 
-# Screenshots
-<p float="left">
-  <img src="https://github.com/iakmds/librecamera/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Screenshot 1" height="420">
-  <img src="https://github.com/iakmds/librecamera/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Screenshot 2" height="420">
-  <img src="https://github.com/iakmds/librecamera/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="Screenshot 3" height="420">
-  <img src="https://github.com/iakmds/librecamera/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" alt="Screenshot 4" height="420">
-</p>
+2. **进入开发环境**：
+   ```bash
+   nix develop
+   ```
 
-# Download
+3. **配置 Android SDK 环境变量**：
+   ```bash
+   export ANDROID_HOME="$HOME/Library/Android/sdk"
+   export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools:$PATH"
+   ```
 
-You can download Libre Camera on [F-Droid](https://f-droid.org/packages/com.iakmds.librecamera) by tapping on the badge below. Alternatively, download and install the apk directly from the GitHub [releases](https://github.com/iakmds/librecamera/releases) page. Downloading directly from the GitHub releases page will likely download a more recent version (if a new version was published recently) – notice though that the F-Droid and the GitHub versions aren't compatible with one another. You will need to reinstall the app; make sure you remember your settings.
+4. **验证环境**：
+   ```bash
+   flutter doctor
+   ```
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/packages/com.iakmds.librecamera)
-[<img src="https://raw.githubusercontent.com/iakmds/librecamera/master/.github/get-it-on-github.png"
-    alt="Get it on GitHub"
-    height="80">](https://github.com/iakmds/librecamera/releases/latest)
+5. **获取依赖**：
+   ```bash
+   flutter pub get
+   ```
 
-# Features
+6. **连接Android设备或启动模拟器**：
+   ```bash
+   # 检查连接的设备
+   flutter devices
+   
+   # 或者启动Android模拟器
+   flutter emulators --launch <emulator_id>
+   ```
 
-- Take pictures and record videos with your rear and front camera
-- Privacy: No EXIF metadata saved by default when taking pictures (enable optionally in settings) – without ads, tracking, or unnecessary permissions
-- Themes: Material Design with a Dark, Light or system theme
-- Multiple languages supported – [Contribute translating your language!](#translate)
-- Zoom: Zoom with 2 fingers or with an optional slider
-- Timer/Delay: Select a photo capture timer to get ready for your photo
-- Flashlight modes: On at capture, Off, Auto, Always on
-- Focus: Auto focus, locked focus and manual focus by touching the screen
-- Exposure: Auto exposure, locked exposure and manual exposure with an optional slider
-- Image compression: Set the compression amount in the settings
-- Formats: Switch between 3 camera formats (JPEG, PNG, WebP)
-- Resolutions: Switch between different camera resolutions
-- Save location: Choose your preferred save location
-- Small size (<20 MB)
-- Customizable: Open the settings to customize the app to your liking!
+7. **编译并安装到设备**：
+   ```bash
+   # Debug版本（开发测试）
+   flutter run
+   
+   # 或者构建APK文件
+   flutter build apk --release
+   
+   # APK文件位置：build/app/outputs/flutter-apk/app-release.apk
+   ```
 
-# Roadmap
+8. **安装到Android设备**：
+   ```bash
+   # 直接安装
+   flutter install
+   
+   # 或者手动安装APK
+   adb install build/app/outputs/flutter-apk/app-release.apk
+   ```
 
-- [ ] More supported languages (See [#translate](#translate) below)
-- [ ] [Your features](https://github.com/iakmds/librecamera/issues)
-- [ ] Flutter issue: [Allow custom resolution and aspect ratio](https://github.com/flutter/flutter/issues/45665) (Fix [#21](https://github.com/iakmds/librecamera/issues/21))
-- [ ] Flutter issue: [Set custom frame rate and bit rate](https://github.com/flutter/flutter/issues/54339) (Fix [#21](https://github.com/iakmds/librecamera/issues/21))
-- [ ] Flutter issue: [Switch between multiple cameras](https://github.com/flutter/flutter/issues/91247) (Fix [#18](https://github.com/iakmds/librecamera/issues/18))
-- [ ] Flutter issue: [Manual focus distance](https://github.com/flutter/flutter/issues/111476) (Fix [#3](https://github.com/iakmds/librecamera/issues/3))
-- [ ] Feature: Add integrated QR-Scanner (Fix [#32](https://github.com/iakmds/librecamera/issues/32))
-- [ ] Settings: Add a search bar for the settings page
-- [x] (Included in version 1.9.0) Theme: Add a black Dark mode for AMOLED screens
-- [x] (Included in version 1.8.0) Feature: Add "photo capture at phone volume button press" as an option in settings
-- [x] (Included in version 1.7.0) Flutter issue: [Flip camera while recording](https://github.com/flutter/flutter/issues/82467)
-- [x] (Included in version 1.3.0) Feature: Add photo capture delay option
-- [x] (Included in version 1.3.0) Feature: Add a capture sound as an option in settings
-- [x] [Weblate](https://hosted.weblate.org/engage/librecamera/) integration
-- [x] Check tablet support
+---
 
-# Contributing
+### 方法二：使用 Archlinux
 
-These are the ways you can contribute to Libre Camera:
+#### 前置要求
 
-<a href="https://hosted.weblate.org/engage/librecamera/">
-<img align="right" src="https://hosted.weblate.org/widgets/librecamera/-/287x66-grey.png" alt="Translation status" /></a>
+1. **更新系统**：
+   ```bash
+   sudo pacman -Syu
+   ```
 
-## Translate
+2. **安装基础依赖**：
+   ```bash
+   sudo pacman -S git wget curl unzip base-devel
+   ```
 
-<a href="https://hosted.weblate.org/engage/librecamera/"><img src="https://hosted.weblate.org/widgets/librecamera/-/multi-auto.svg" alt="Translation status" /></a>
+3. **安装 Java JDK 17**：
+   ```bash
+   sudo pacman -S jdk17-openjdk
+   
+   # 设置JAVA_HOME
+   echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk' >> ~/.bashrc
+   echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
+   source ~/.bashrc
+   ```
 
-**Translating guide:** Translations are now handled using [Weblate](https://hosted.weblate.org/engage/librecamera/)! To use Weblate, log into your Weblate account and choose one of the 2 components you want to translate: Either the [app itself](https://hosted.weblate.org/projects/librecamera/librecamera) or the [F-Droid metadata](https://hosted.weblate.org/projects/librecamera/f-droid). Now, select the language you want to translate or add a new language. You will see a list of different strings to choose from; untranslated and unfinished strings will probably be of most interest to you. And finally: Have fun translating!
+4. **安装 Android Studio**：
+   ```bash
+   # 方法1：使用AUR
+   yay -S android-studio
+   
+   # 方法2：手动下载
+   # 访问 https://developer.android.com/studio 下载
+   # 解压到 /opt/android-studio 并添加到PATH
+   ```
 
-Before using Weblate you had to translate Libre Camera manually via pull requests. Thank you [@Loughty](https://github.com/Loughty), [@zehrique](https://github.com/zehrique), [@vladkorotnev](https://github.com/vladkorotnev), [@metezd](https://github.com/metezd), [@ZiTAL](https://github.com/ZiTAL) and [@melentan](https://github.com/melentan)!
+5. **配置 Android SDK**：
+   ```bash
+   # 通过Android Studio安装SDK，或使用命令行工具
+   export ANDROID_HOME="$HOME/Android/Sdk"
+   export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools:$PATH"
+   echo 'export ANDROID_HOME="$HOME/Android/Sdk"' >> ~/.bashrc
+   echo 'export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools:$PATH"' >> ~/.bashrc
+   ```
 
-## Bug Reporting or Feature Requests
+6. **安装 Flutter**：
+   ```bash
+   # 方法1：使用snap
+   sudo pacman -S snapd
+   sudo snap install flutter --classic
+   
+   # 方法2：手动安装
+   cd ~
+   git clone https://github.com/flutter/flutter.git -b stable
+   echo 'export PATH="$HOME/flutter/bin:$PATH"' >> ~/.bashrc
+   source ~/.bashrc
+   ```
 
-Open an issue on GitHub: [Open issue](https://github.com/iakmds/librecamera/issues)
+#### 编译步骤
 
-Remember to check for duplicates and try to give important information such as the app version, Android version, etc.
+1. **克隆项目**：
+   ```bash
+   git clone https://github.com/KirisameLonnet/LutinLens.git
+   cd LutinLens
+   ```
 
-## Code
+2. **验证开发环境**：
+   ```bash
+   flutter doctor
+   ```
 
-Feel free to send in a [pull request](https://github.com/iakmds/librecamera/pulls)! To get started with Flutter, follow this link: [https://docs.flutter.dev/get-started/install](https://docs.flutter.dev/get-started/install)
+3. **接受Android许可证**：
+   ```bash
+   flutter doctor --android-licenses
+   ```
 
-1. Clone this repository
-2. Switch to the project's directory and run `flutter pub get` to get all necessary packages. To test the app, run the project in debug mode by selecting an Android device or emulator in your preferred Flutter IDE and running the app in debug mode
-3. To build the final app, run the following command in your terminal: `flutter build apk` – the output apk will be generated at `librecamera/build/app/outputs/apk/release/`. To receive all localized strings, run `flutter gen-l10n`. If you'd like to get multiple apks by splitting them into different platforms (results in smaller sizes), use `flutter build apk --split-per-abi`.
+4. **获取项目依赖**：
+   ```bash
+   flutter pub get
+   ```
 
-# Packages used
+5. **启用USB调试并连接Android设备**：
+   - 在Android设备上：设置 → 关于手机 → 连续点击"版本号"7次启用开发者选项
+   - 设置 → 开发者选项 → 启用"USB调试"
+   - 用USB连接设备到电脑
 
-The packages used for this app, also listed in the pubspec.yaml file. See their respective licenses.
+6. **验证设备连接**：
+   ```bash
+   flutter devices
+   adb devices
+   ```
 
-Package | Use case
--|-
-[camera](https://pub.dev/packages/camera) | Camera functionality
-[device_info_plus](https://pub.dev/packages/device_info_plus) | Getting the Android version to adapt saving behaviour
-[dynamic_color](https://pub.dev/packages/dynamic_color) | Getting the Android Material 3 dynamic color
-[file_picker](https://pub.dev/packages/file_picker) | Picking the save path
-[flutter](https://pub.dev/packages/flutter) | Flutter SDK
-[flutter_android_volume_keydown](https://pub.dev/packages/flutter/flutter_android_volume_keydown) | Capture photo/video on volume button press
-[flutter_image_compress](https://pub.dev/packages/flutter_image_compress) | Image compression and EXIF metadata removal
-[flutter_localizations](https://pub.dev/packages/flutter_localizations) | Localization
-[image](https://pub.dev/packages/image) | Ability to flip captured photos horizontally
-[intl](https://pub.dev/packages/intl) | Localization
-[native_device_orientation](https://pub.dev/packages/native_device_orientation) | Automatic orientation based on the phones sensor
-[package_info_plus](https://pub.dev/packages/package_info_plus) | Display the programs version number
-[permission_handler](https://pub.dev/packages/permission_handler) | Handling permissions
-[provider](https://pub.dev/packages/provider) | State management (localization and themes)
-[screen_brightness](https://pub.dev/packages/screen_brightness) | Maximum screen brightness option
-[shared_preferences](https://pub.dev/packages/shared_preferences) | Saving app data like settings
-[smooth_page_indicator](https://pub.dev/packages/smooth_page_indicator) | Page indicator in the onboarding screen
-[url_launcher](https://pub.dev/packages/url_launcher) | Open the GitHub repository link inside the about menu
-[video_thumbnail](https://pub.dev/packages/video_thumbnail) | Displaying a captured video inside the thumbnail
-[wakelock](https://pub.dev/packages/wakelock) | Keeping the display always on
+7. **编译并安装**：
+   ```bash
+   # 运行debug版本（实时调试）
+   flutter run
+   
+   # 构建release APK
+   flutter build apk --release
+   
+   # 构建app bundle（用于Google Play）
+   flutter build appbundle --release
+   ```
 
-# License
+8. **手动安装APK**：
+   ```bash
+   # 安装到连接的设备
+   adb install build/app/outputs/flutter-apk/app-release.apk
+   
+   # 或者直接使用flutter命令
+   flutter install
+   ```
 
-This project is licensed under the [GNU General Public License Version 3](https://www.gnu.org/licenses/gpl-3.0.html). For details, see [LICENSE](LICENSE)
+## 故障排除
+
+### 常见问题
+
+1. **Flutter doctor 显示问题**：
+   ```bash
+   # Android toolchain问题
+   flutter doctor --android-licenses
+   
+   # 缺少Android SDK
+   # 通过Android Studio SDK Manager安装所需组件
+   ```
+
+2. **Java版本问题**：
+   ```bash
+   # 验证Java版本
+   java -version
+   javac -version
+   
+   # 应该显示17.x.x版本
+   ```
+
+3. **设备未识别**：
+   ```bash
+   # 重启adb服务
+   adb kill-server
+   adb start-server
+   
+   # 检查USB驱动和调试模式
+   adb devices
+   ```
+
+4. **权限问题**：
+   ```bash
+   # Linux/macOS添加用户到dialout组
+   sudo usermod -a -G dialout $USER
+   # 重新登录后生效
+   ```
+
+5. **Gradle构建失败**：
+   ```bash
+   # 清理构建缓存
+   flutter clean
+   flutter pub get
+   cd android && ./gradlew clean && cd ..
+   ```
+
+### 性能优化
+
+1. **构建发布版本**：
+   ```bash
+   flutter build apk --release --shrink
+   ```
+
+2. **启用R8代码压缩**（已在项目中配置）
+
+3. **减小APK大小**：
+   ```bash
+   flutter build apk --split-per-abi
+   ```
+
+## 开发调试
+
+### 热重载开发
+```bash
+flutter run
+# 在代码修改后按 'r' 进行热重载
+# 按 'R' 进行热重启
+```
+
+### 日志查看
+```bash
+flutter logs
+# 或
+adb logcat | grep flutter
+```
+
+### 性能分析
+```bash
+flutter run --profile
+# 然后打开 Flutter Inspector
+```
+
+## 许可证
+
+本项目基于 GPL-3.0 许可证开源。详见 [LICENSE](LICENSE) 文件。
+
+## 贡献
+
+欢迎提交Issue和Pull Request！请确保：
+- 遵循项目代码风格
+- 添加适当的测试
+- 更新相关文档
+
+## 联系方式
+
+- 项目地址：https://github.com/KirisameLonnet/LutinLens
+- 问题反馈：https://github.com/KirisameLonnet/LutinLens/issues
+
+---
+
+**注意**: 这是一个开发版本的构建指南。如果您只想使用应用程序，建议从 F-Droid 或 GitHub Releases 下载预编译的APK文件。
