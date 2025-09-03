@@ -51,11 +51,15 @@ dependencies:
   smooth_page_indicator: ^1.0.0+2
   url_launcher: ^6.1.6
   wakelock_plus: ^1.0.0
-  flutter_gl: ^0.0.3
+  flutter_gl:
+    path: third_party/flutter_gl-0.0.21
 
 dependency_overrides:
   permission_handler: ^12.0.0
   permission_handler_android: ^13.0.0
+  # Ensure local patched flutter_gl is used
+  flutter_gl:
+    path: third_party/flutter_gl-0.0.21
 
 # dependency_overrides:
   # Can be removed when

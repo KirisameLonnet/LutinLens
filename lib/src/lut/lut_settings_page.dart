@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/lut_manager.dart';
 import 'lut_preview_manager.dart';
+// 手动导入已禁用
 
 /// LUT设置页面
 class LutSettingsPage extends StatefulWidget {
@@ -214,40 +215,16 @@ class _LutSettingsPageState extends State<LutSettingsPage> {
   Widget _buildBottomButtons() {
     return Container(
       padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _importLut,
-              icon: const Icon(Icons.file_upload),
-              label: const Text('导入LUT'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _resetToDefault,
-              icon: const Icon(Icons.refresh),
-              label: const Text('重置默认'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[700],
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
-        ],
+      child: ElevatedButton.icon(
+        onPressed: _resetToDefault,
+        icon: const Icon(Icons.restore),
+        label: const Text('重置默认'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.grey[700],
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(48),
+        ),
       ),
-    );
-  }
-
-  Future<void> _importLut() async {
-    // TODO: 实现LUT导入功能
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('LUT导入功能开发中')),
     );
   }
 

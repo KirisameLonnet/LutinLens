@@ -1,5 +1,8 @@
 allprojects {
     repositories {
+        // Local project Maven repo containing threeegl
+        maven { url uri("$rootDir/maven-repo") }
+        mavenLocal()
         google()
         mavenCentral()
     }

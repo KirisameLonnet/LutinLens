@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:librecamera/src/utils/lut_manager.dart';
 import 'package:librecamera/src/lut/lut_preview_manager.dart';
 import 'package:librecamera/src/utils/preferences.dart';
+import 'dart:typed_data';
 
 /// LUT状态管理Provider
 class LutProvider extends ChangeNotifier {
@@ -105,6 +106,31 @@ class LutProvider extends ChangeNotifier {
         await loadLuts(); // 重新加载列表
         
         // 如果导入成功，自动选择新导入的LUT
+        final importedLut = _luts.where((lut) => lut.name == lutName).firstOrNull;
+        if (importedLut != null) {
+          await selectLut(importedLut);
+        }
+      } else {
+        _setError('导入LUT失败');
+      }
+      return success;
+    } catch (e) {
+      _setError('导入LUT时发生错误: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// 通过字节导入LUT文件（适配无本地文件路径场景）
+  Future<bool> importLutBytes(Uint8List data, String lutName) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final bool success = await LutManager.importLutBytes(data, lutName);
+      if (success) {
+        await loadLuts();
         final importedLut = _luts.where((lut) => lut.name == lutName).firstOrNull;
         if (importedLut != null) {
           await selectLut(importedLut);

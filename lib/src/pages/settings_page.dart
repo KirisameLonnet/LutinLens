@@ -9,6 +9,8 @@ import 'package:librecamera/src/provider/theme_provider.dart';
 import 'package:librecamera/src/utils/preferences.dart';
 import 'package:librecamera/src/widgets/format.dart';
 import 'package:librecamera/src/widgets/resolution.dart';
+import 'package:librecamera/src/pages/lut_management_page.dart';
+import 'package:librecamera/src/lut/lut_settings_page.dart';
 
 import '../../l10n/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -574,6 +576,12 @@ class _SettingsPageState extends State<SettingsPage> {
             const Divider(),
             _enableExposureSliderTile(),
             const Divider(),
+            // LUT section
+            _headingTile('LUT'),
+            _lutManagementTile(),
+            const Divider(),
+            _lutSettingsTile(),
+            const Divider(),
             _headingTile(AppLocalizations.of(context)!.cameraBehaviour),
             _resolutionTile(),
             const Divider(),
@@ -601,6 +609,32 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _lutManagementTile() {
+    return ListTile(
+      leading: const Icon(Icons.photo_filter),
+      title: const Text('LUT 管理'),
+      subtitle: const Text('导入、选择、导出或删除 LUT'),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const LutManagementPage()),
+        );
+      },
+    );
+  }
+
+  Widget _lutSettingsTile() {
+    return ListTile(
+      leading: const Icon(Icons.tune),
+      title: const Text('LUT 设置'),
+      subtitle: const Text('启用预览与强度调节'),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const LutSettingsPage()),
+        );
+      },
     );
   }
 }

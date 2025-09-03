@@ -18,6 +18,7 @@
         devShell = pkgs.mkShell {
           buildInputs = [
             pkgs.openjdk17
+            pkgs.maven
           ];
 
           shellHook = ''

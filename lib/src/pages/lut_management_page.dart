@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
+// 手动导入已禁用
 import 'package:librecamera/src/provider/lut_provider.dart';
 import 'package:librecamera/src/utils/lut_manager.dart';
 
@@ -36,16 +36,7 @@ class _LutManagementPageState extends State<LutManagementPage> {
           PopupMenuButton<String>(
             onSelected: _handleMenuAction,
             itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'import',
-                child: Row(
-                  children: [
-                    Icon(Icons.file_upload),
-                    SizedBox(width: 8),
-                    Text('导入 LUT'),
-                  ],
-                ),
-              ),
+              // 已移除“导入 LUT”选项
               const PopupMenuItem(
                 value: 'reset',
                 child: Row(
@@ -111,7 +102,7 @@ class _LutManagementPageState extends State<LutManagementPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '点击右上角菜单导入 LUT 文件',
+                    '已锁定为内置静态 LUT（不支持导入）',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -228,9 +219,6 @@ class _LutManagementPageState extends State<LutManagementPage> {
 
   void _handleMenuAction(String action) {
     switch (action) {
-      case 'import':
-        _importLut();
-        break;
       case 'reset':
         _resetAllLuts();
         break;
@@ -251,17 +239,30 @@ class _LutManagementPageState extends State<LutManagementPage> {
     }
   }
 
+  /* 手动导入功能已禁用（旧实现保留注释）
   Future<void> _importLut() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['cube'],
+    // 手动导入已禁用
+    if (mounted) {
+      _showSnackBar('已禁用：不支持手动导入', isError: true);
+    }
+    return;
+      final result = null;
+        type: FileType.any,
+        withData: true,
         dialogTitle: '选择 LUT 文件',
       );
 
-      if (result != null && result.files.single.path != null) {
+      if (result != null) {
         final file = result.files.single;
-        final fileName = file.name.replaceAll('.cube', '');
+        // 自行校验扩展名
+        final isCube = (file.extension?.toLowerCase() == 'cube') || file.name.toLowerCase().endsWith('.cube');
+        if (!isCube) {
+          if (mounted) {
+            _showSnackBar('请选择 .cube 文件', isError: true);
+          }
+          return;
+        }
+        final fileName = file.name.replaceAll(RegExp(r'\.cube\$', caseSensitive: false), '');
 
         // 检查是否已存在同名LUT
         final lutProvider = context.read<LutProvider>();
@@ -273,8 +274,13 @@ class _LutManagementPageState extends State<LutManagementPage> {
           if (!shouldReplace) return;
         }
 
-        final success = await lutProvider.importLut(file.path!, fileName);
-        
+        bool success = false;
+        if (file.path != null) {
+          success = await lutProvider.importLut(file.path!, fileName);
+        } else if (file.bytes != null) {
+          success = await lutProvider.importLutBytes(file.bytes as Uint8List, fileName);
+        }
+
         if (success && mounted) {
           _showSnackBar('LUT "$fileName" 导入成功', isError: false);
         }
@@ -283,6 +289,12 @@ class _LutManagementPageState extends State<LutManagementPage> {
       if (mounted) {
         _showSnackBar('导入失败: $e', isError: true);
       }
+    }
+  }
+  */
+  Future<void> _importLut() async {
+    if (mounted) {
+      _showSnackBar('已禁用：不支持手动导入', isError: true);
     }
   }
 

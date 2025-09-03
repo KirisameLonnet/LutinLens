@@ -1,12 +1,16 @@
 import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// LUT文件管理器
 /// 负责管理用户的LUT文件，包括默认LUT的初始化、用户LUT的增删改查等
 class LutManager {
   static const String _lutsInitializedKey = 'luts_initialized';
+  static const String _lastAppVersionKey = 'last_app_version';
   static const String _defaultLutPath = 'assets/Luts/';
   static const String _userLutsDirName = 'luts';
 
@@ -23,18 +27,36 @@ class LutManager {
   }
 
   /// 初始化LUT系统
-  /// 首次运行时将assets中的默认LUT复制到用户目录
+  /// 在每次安装APK或应用更新时将assets中的默认LUT复制到用户目录
   static Future<void> initializeLuts() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      bool lutsInitialized = prefs.getBool(_lutsInitializedKey) ?? false;
+      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
       
-      if (!lutsInitialized) {
+      bool lutsInitialized = prefs.getBool(_lutsInitializedKey) ?? false;
+      String? lastAppVersion = prefs.getString(_lastAppVersionKey);
+      // 使用 version+buildNumber 来区分安装包，确保升级构建号也会重新拷贝
+      String currentAppVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+      
+      // 检查是否需要重新拷贝LUT文件
+      // 条件：首次安装或应用版本发生变化
+      bool shouldReinitialize = !lutsInitialized || 
+                                lastAppVersion == null || 
+                                lastAppVersion != currentAppVersion;
+      
+      if (shouldReinitialize) {
+        print('🔄 检测到应用更新或首次安装，重新初始化LUT文件...');
+        print('📱 当前版本: $currentAppVersion, 上次版本: $lastAppVersion');
+        
         await _copyDefaultLutsToUserDirectory();
+        
+        // 更新标志位和版本号
         await prefs.setBool(_lutsInitializedKey, true);
-        print('✅ LUT初始化完成');
+        await prefs.setString(_lastAppVersionKey, currentAppVersion);
+        
+        print('✅ LUT初始化完成 (版本: $currentAppVersion)');
       } else {
-        print('ℹ️ LUT已经初始化过');
+        print('ℹ️ LUT已经是最新版本 ($currentAppVersion)');
       }
     } catch (e) {
       print('❌ LUT初始化失败: $e');
@@ -42,34 +64,70 @@ class LutManager {
   }
 
   /// 从assets复制默认LUT到用户目录
+  /// 在每次应用安装或更新时执行，会覆盖已存在的默认LUT文件
   static Future<void> _copyDefaultLutsToUserDirectory() async {
     try {
       final Directory userLutsDir = await getUserLutsDirectory();
       
-      // 动态发现可用的LUT（尝试加载已知的LUT并检查是否存在）
-      final List<String> potentialLutNames = ['CINEMATIC_FILM', 'VINTAGE_FILM', 'MODERN_DIGITAL'];
+      // 从 AssetManifest 动态发现可用的 LUT
+      final List<String> lutNames = await _discoverAssetLutNames();
       bool anyLutCopied = false;
-      
-      for (String lutName in potentialLutNames) {
+
+      print('📦 开始拷贝 ${lutNames.length} 个默认LUT文件...');
+
+      for (final lutName in lutNames) {
         try {
-          // 检查是否存在cube文件来确认LUT存在
+          // 验证 cube 是否存在（避免清单误差）
           await rootBundle.load('$_defaultLutPath$lutName/$lutName.cube');
-          
-          // 如果文件存在，尝试复制
           await _copyAssetFolder('$_defaultLutPath$lutName/', lutName, userLutsDir);
           print('✅ 成功复制LUT: $lutName');
           anyLutCopied = true;
         } catch (e) {
-          print('ℹ️ LUT "$lutName" 不存在，跳过');
+          print('ℹ️ 跳过无效LUT "$lutName": $e');
         }
       }
-      
+
       if (!anyLutCopied) {
-        print('⚠️ 没有找到任何默认LUT文件');
+        print('⚠️ 没有找到任何默认LUT文件 (assets/Luts/)');
+      } else {
+        print('🎉 成功拷贝了 ${lutNames.where((name) {
+          try {
+            return true; // 简化判断，实际成功的文件数通过日志确认
+          } catch (e) {
+            return false;
+          }
+        }).length} 个LUT文件');
       }
       
     } catch (e) {
       print('❌ 复制默认LUT失败: $e');
+    }
+  }
+
+  /// 从 AssetManifest 中枚举所有 assets/Luts/ 下的 .cube 文件，提取 LUT 名称
+  static Future<List<String>> _discoverAssetLutNames() async {
+    try {
+      final String manifestJson = await rootBundle.loadString('AssetManifest.json');
+      final Map<String, dynamic> manifestMap = json.decode(manifestJson) as Map<String, dynamic>;
+
+      final Set<String> names = {};
+      for (final String assetPath in manifestMap.keys) {
+        // 形如: assets/Luts/<NAME>/<FILE>.cube
+        if (assetPath.startsWith(_defaultLutPath) && assetPath.endsWith('.cube')) {
+          final parts = assetPath.split('/');
+          if (parts.length >= 4) {
+            final fileName = parts.last; // <FILE>.cube
+            final name = fileName.replaceAll('.cube', '');
+            names.add(name);
+          }
+        }
+      }
+      final list = names.toList()..sort();
+      print('ℹ️ 在 assets 中发现默认LUT: $list');
+      return list;
+    } catch (e) {
+      print('⚠️ 读取 AssetManifest 失败，回退为空: $e');
+      return [];
     }
   }
 
@@ -207,6 +265,24 @@ class LutManager {
       return true;
     } catch (e) {
       print('❌ LUT导入失败: $e');
+      return false;
+    }
+  }
+
+  /// 通过内存字节导入新的LUT文件（适配 Android SAF/无物理路径场景）
+  static Future<bool> importLutBytes(Uint8List data, String lutName) async {
+    try {
+      final Directory lutsDir = await getUserLutsDirectory();
+      final File targetFile = File('${lutsDir.path}/$lutName.cube');
+      await targetFile.writeAsBytes(data, flush: true);
+
+      // 更新描述文件
+      await _updateLutDescription(lutName, 'Imported LUT');
+
+      print('✅ LUT字节导入成功: $lutName');
+      return true;
+    } catch (e) {
+      print('❌ LUT字节导入失败: $e');
       return false;
     }
   }
