@@ -16,9 +16,8 @@ import 'package:librecamera/src/widgets/format.dart';
 import 'package:librecamera/src/widgets/resolution.dart';
 import 'package:librecamera/src/widgets/timer.dart';
 import 'package:native_device_orientation/native_device_orientation.dart';
-import 'package:permission_handler/permission_handler.dart';
+// import 'package:permission_handler/permission_handler.dart';
 //import 'package:qr_code_scanner/qr_code_scanner.dart' as qr;
-import 'package:video_thumbnail/video_thumbnail.dart' as video_thumbnail;
 
 import 'package:librecamera/src/pages/settings_page.dart';
 import 'package:librecamera/src/utils/preferences.dart';
@@ -27,8 +26,10 @@ import 'package:librecamera/src/widgets/flash.dart';
 import 'package:librecamera/src/widgets/focus.dart';
 import 'package:librecamera/src/widgets/capture_control.dart';
 import 'package:librecamera/src/lut/lut_preview_manager.dart';
-import 'package:librecamera/src/lut/lut_settings_page.dart';
 import 'package:librecamera/src/lut/lut_mix_control.dart';
+import 'package:librecamera/src/widgets/lut_selector.dart';
+import 'package:librecamera/src/provider/lut_provider.dart';
+import 'package:provider/provider.dart';
 
 /// Camera example home widget.
 class CameraPage extends StatefulWidget {
@@ -46,7 +47,6 @@ class _CameraPageState extends State<CameraPage>
   //Controllers
   File? capturedFile;
   CameraController? controller;
-  Uint8List? videoThumbnailUint8list;
 
   //Zoom
   double _minAvailableZoom = 1.0;
@@ -62,16 +62,12 @@ class _CameraPageState extends State<CameraPage>
 
   //Current camera
   bool isRearCameraSelected = Preferences.getStartWithRearCamera();
-  bool isVideoCameraSelected = false;
   bool takingPicture = false;
 
   //Circle position
   double _circlePosX = 0, _circlePosY = 0;
   bool _circleEnabled = false;
   final Tween<double> _scaleTween = Tween<double>(begin: 1, end: 0.75);
-
-  //Video recording timer
-  final Stopwatch _stopwatch = Stopwatch();
 
   //Photo capture timer
   final Stopwatch _timerStopwatch = Stopwatch();
@@ -106,12 +102,18 @@ class _CameraPageState extends State<CameraPage>
     // 初始化LUT预览管理器
     _initializeLutPreviewManager();
 
+    // 初始化LUT Provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<LutProvider>(context, listen: false).initializeLuts();
+    });
+
     onNewCameraSelected(cameras[Preferences.getStartWithRearCamera() ? 0 : 1]);
   }
 
   Future<void> _initializeLutPreviewManager() async {
     try {
       final manager = LutPreviewManager.instance;
+      await manager.initializeFromPreferences();
       final defaultLutPath = await manager.getDefaultLutPath();
       await manager.setCurrentLut(defaultLutPath);
     } catch (e) {
@@ -133,7 +135,8 @@ class _CameraPageState extends State<CameraPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     
-    // Properly dispose the camera controller
+    // 停止图像流并处理相机控制器
+    LutPreviewManager.instance.stopImageStream();
     controller?.dispose();
     controller = null;
 
@@ -151,6 +154,8 @@ class _CameraPageState extends State<CameraPage>
     }
 
     if (state == AppLifecycleState.inactive) {
+      // 停止图像流
+      LutPreviewManager.instance.stopImageStream();
       cameraController.dispose();
       controller = null; // Set to null after disposing
       //qrController?.pauseCamera();
@@ -164,19 +169,9 @@ class _CameraPageState extends State<CameraPage>
     volumeSubscription =
         FlutterAndroidVolumeKeydown.stream.listen((event) async {
       if (canPressVolume) {
-        final int delay;
-        if (isVideoCameraSelected) {
-          delay = 2;
-          controller?.value.isRecordingVideo == true
-              ? onStopButtonPressed()
-              : onVideoRecordButtonPressed();
-        } else {
-          delay = 1;
-          onTakePictureButtonPressed();
-        }
-
+        onTakePictureButtonPressed();
         canPressVolume = false;
-        await Future.delayed(Duration(seconds: delay));
+        await Future.delayed(const Duration(seconds: 1));
         canPressVolume = true;
       }
     });
@@ -267,6 +262,19 @@ class _CameraPageState extends State<CameraPage>
           _zoomWidget(context),
           _bottomControlsWidget(),
           _circleWidget(),
+          // 紧凑的LUT选择器 - 显示在底部
+          Positioned(
+            bottom: 180,
+            left: 16,
+            child: Consumer<LutProvider>(
+              builder: (context, lutProvider, child) {
+                if (!lutProvider.hasLuts || _timerStopwatch.elapsedTicks > 1) {
+                  return const SizedBox.shrink();
+                }
+                return const CompactLutSelector();
+              },
+            ),
+          ),
           // LUT混合控制组件
           if (_showLutMixControl)
             Positioned(
@@ -340,6 +348,7 @@ class _CameraPageState extends State<CameraPage>
           onPointerUp: (_) => _pointers--,
           child: LutPreviewManager.instance.createPreviewWidget(
             cameraController,
+            isRearCamera: isRearCameraSelected,
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 return GestureDetector(
@@ -382,32 +391,23 @@ class _CameraPageState extends State<CameraPage>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _cameraSwitchWidget(
-                enabled: controller?.value.isRecordingVideo == false &&
-                    _timerStopwatch.elapsedTicks <= 1,
-              ),
-              TimerButton(
-                  enabled: !isVideoCameraSelected &&
-                      _timerStopwatch.elapsedTicks <= 1),
+              TimerButton(enabled: _timerStopwatch.elapsedTicks <= 1),
               FlashModeWidget(
                 controller: controller,
                 isRearCameraSelected: isRearCameraSelected,
-                isVideoCameraSelected: isVideoCameraSelected,
+                isVideoCameraSelected: false,
               ),
               ResolutionButton(
                 isDense: true,
                 onNewCameraSelected: _initializeCameraController,
                 isRearCameraSelected: isRearCameraSelected,
-                enabled: controller?.value.isRecordingVideo == false &&
-                    _timerStopwatch.elapsedTicks <= 1,
+                enabled: _timerStopwatch.elapsedTicks <= 1,
               ),
-              _lutSettingsButton(
-                enabled: controller?.value.isRecordingVideo == false &&
-                    _timerStopwatch.elapsedTicks <= 1,
+              _lutSelectorWidget(
+                enabled: _timerStopwatch.elapsedTicks <= 1,
               ),
               _settingsWidget(
-                enabled: controller?.value.isRecordingVideo == false &&
-                    _timerStopwatch.elapsedTicks <= 1,
+                enabled: _timerStopwatch.elapsedTicks <= 1,
               ),
             ],
           ),
@@ -462,45 +462,6 @@ class _CameraPageState extends State<CameraPage>
     );
   }
 
-  Widget _cameraSwitchWidget({required bool enabled}) {
-    return AnimatedRotation(
-      duration: const Duration(milliseconds: 400),
-      turns:
-          MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
-      child: IconButton(
-        color: Colors.white,
-        disabledColor: Colors.white24,
-        onPressed: enabled
-            ? () async {
-                if (!isVideoCameraSelected) {
-                  final status = await Permission.microphone.status;
-
-                  if (!status.isGranted) {
-                    await Permission.microphone.request();
-                  } else {
-                    setState(() {
-                      isVideoCameraSelected = true;
-                      _initializeCameraController(controller!.description);
-                    });
-                  }
-                } else {
-                  controller?.value.isRecordingVideo ?? false
-                      ? null
-                      : setState(() => isVideoCameraSelected = false);
-                }
-              }
-            : null,
-        iconSize: 36,
-        icon: isVideoCameraSelected
-            ? const Icon(Icons.camera_alt)
-            : const Icon(Icons.videocam),
-        tooltip: isVideoCameraSelected
-            ? AppLocalizations.of(context)!.switchToPictureMode
-            : AppLocalizations.of(context)!.switchToVideoRecordingMode,
-      ),
-    );
-  }
-
   Widget _settingsWidget({required bool enabled}) {
     return AnimatedRotation(
       duration: const Duration(milliseconds: 400),
@@ -525,49 +486,30 @@ class _CameraPageState extends State<CameraPage>
     );
   }
 
-  Widget _lutSettingsButton({required bool enabled}) {
+  Widget _lutSelectorWidget({required bool enabled}) {
     return AnimatedRotation(
       duration: const Duration(milliseconds: 400),
-      turns:
-          MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
-      child: GestureDetector(
-        onTap: enabled
-            ? () {
-                _stopVolumeButtons();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const LutSettingsPage(),
-                  ),
-                );
-              }
-            : null,
-        onLongPress: enabled
-            ? () {
-                setState(() {
-                  _showLutMixControl = !_showLutMixControl;
-                });
-              }
-            : null,
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.transparent,
-          ),
-          child: Icon(
-            Icons.filter,
-            color: enabled ? Colors.white : Colors.white24,
-            size: 36,
-          ),
-        ),
-      ),
+      turns: MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
+      child: enabled
+          ? const LutSelector()
+          : Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.transparent,
+              ),
+              child: const Icon(
+                Icons.photo_filter,
+                color: Colors.white24,
+                size: 36,
+              ),
+            ),
     );
   }
 
   Widget _thumbnailPreviewWidget() {
-    return _timerStopwatch.elapsedTicks > 1 ||
-            controller?.value.isRecordingVideo == true
+    return _timerStopwatch.elapsedTicks > 1
         ? const SizedBox(height: 60, width: 60)
         : AnimatedRotation(
             duration: const Duration(milliseconds: 400),
@@ -589,22 +531,18 @@ class _CameraPageState extends State<CameraPage>
                       int sdkInt = androidInfo.version.sdkInt;
 
                       final String mimeType;
-                      if (capturedFile!.path.split('.').last == 'mp4') {
-                        mimeType = 'video/mp4';
-                      } else {
-                        switch (getCompressFormat()) {
-                          case CompressFormat.jpeg:
-                            mimeType = 'image/jpeg';
-                            break;
-                          case CompressFormat.png:
-                            mimeType = 'image/png';
-                            break;
-                          case CompressFormat.webp:
-                            mimeType = 'image/webp';
-                            break;
-                          default:
-                            mimeType = 'image/jpeg';
-                        }
+                      switch (getCompressFormat()) {
+                        case CompressFormat.jpeg:
+                          mimeType = 'image/jpeg';
+                          break;
+                        case CompressFormat.png:
+                          mimeType = 'image/png';
+                          break;
+                        case CompressFormat.webp:
+                          mimeType = 'image/webp';
+                          break;
+                        default:
+                          mimeType = 'image/jpeg';
                       }
 
                       final methodChannel = AndroidMethodChannel();
@@ -643,13 +581,7 @@ class _CameraPageState extends State<CameraPage>
         child: CaptureControlWidget(
           controller: controller,
           onTakePictureButtonPressed: onTakePictureButtonPressed,
-          onVideoRecordButtonPressed: onVideoRecordButtonPressed,
-          onResumeButtonPressed: onResumeButtonPressed,
-          onPauseButtonPressed: onPauseButtonPressed,
-          onStopButtonPressed: onStopButtonPressed,
           onNewCameraSelected: onNewCameraSelected,
-          isVideoCameraSelected: isVideoCameraSelected,
-          isRecordingInProgress: controller?.value.isRecordingVideo ?? false,
           /*flashWidget: FlashModeControlRowWidget(
                 controller: controller,
                 isRearCameraSelected: isRearCameraSelected,
@@ -662,36 +594,6 @@ class _CameraPageState extends State<CameraPage>
     ];
 
     final bottomControls = <Widget>[
-      if (controller != null &&
-          isVideoCameraSelected &&
-          controller!.value.isRecordingVideo)
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: AnimatedRotation(
-              duration: const Duration(milliseconds: 400),
-              turns: MediaQuery.of(context).orientation == Orientation.portrait
-                  ? 0
-                  : 0.25,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(8.0, 4.0, 8.0, 4.0),
-                decoration: BoxDecoration(
-                    color: Colors.black38,
-                    borderRadius: BorderRadius.circular(4.0)),
-                child: Text(
-                  _stopwatch.elapsed.inSeconds < 60
-                      ? '${_stopwatch.elapsed.inSeconds}s'
-                      : '${_stopwatch.elapsed.inMinutes}m ${_stopwatch.elapsed.inSeconds % 60}s',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24.0,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       Container(
         color: Colors.black12,
         child: Column(
@@ -727,7 +629,26 @@ class _CameraPageState extends State<CameraPage>
   //Selecting camera
   Future<void> onNewCameraSelected(CameraDescription cameraDescription) async {
     if (controller != null) {
-      return controller!.setDescription(cameraDescription);
+      // 切换摄像头前先停止图像流
+      await LutPreviewManager.instance.stopImageStream();
+      
+      try {
+        await controller!.setDescription(cameraDescription);
+        
+        // 通知LutProvider摄像头控制器已更改
+        if (mounted) {
+          Provider.of<LutProvider>(context, listen: false).onCameraControllerChanged();
+        }
+        
+        // 延迟重新启动图像流，确保摄像头切换完成
+        Future.delayed(const Duration(milliseconds: 300), () {
+          LutPreviewManager.instance.resumeImageStream();
+        });
+      } catch (e) {
+        print('切换摄像头时出错: $e');
+        // 即使出错也要尝试恢复图像流
+        LutPreviewManager.instance.resumeImageStream();
+      }
     } else {
       return _initializeCameraController(cameraDescription);
     }
@@ -735,13 +656,26 @@ class _CameraPageState extends State<CameraPage>
 
   Future<void> _initializeCameraController(
       CameraDescription cameraDescription) async {
+    // 停止当前的图像流以避免冲突
+    await LutPreviewManager.instance.stopImageStream();
+    
+    // 如果存在旧的控制器，先清理它
+    if (controller != null) {
+      try {
+        await controller!.dispose();
+      } catch (e) {
+        print('清理旧控制器时出错: $e');
+      }
+      controller = null;
+    }
+    
     final flashMode = getFlashMode();
     final resolution = getResolution();
 
     final CameraController cameraController = CameraController(
       cameraDescription,
       resolution,
-      enableAudio: isVideoCameraSelected ? Preferences.getEnableAudio() : false,
+      enableAudio: false,
       imageFormatGroup: ImageFormatGroup.yuv420, // 改为YUV420以支持LUT预览
     );
 
@@ -776,12 +710,29 @@ class _CameraPageState extends State<CameraPage>
           print('$e: ${e.description}');
           break;
       }
+      
+      // 即使初始化失败也要尝试恢复图像流
+      LutPreviewManager.instance.resumeImageStream();
+      return; // 提前返回，避免重复调用resumeImageStream
+    } catch (e) {
+      print('初始化相机控制器时发生未知错误: $e');
+      // 即使发生未知错误也要尝试恢复图像流
+      LutPreviewManager.instance.resumeImageStream();
+      return; // 提前返回，避免重复调用resumeImageStream
     }
 
     if (mounted) {
       await _refreshGalleryImages();
 
       setState(() {});
+      
+      // 通知LutProvider摄像头控制器已更改
+      Provider.of<LutProvider>(context, listen: false).onCameraControllerChanged();
+      
+      // 延迟重新启动图像流，确保相机完全初始化
+      Future.delayed(const Duration(milliseconds: 300), () {
+        LutPreviewManager.instance.resumeImageStream();
+      });
     }
 
     checkVolumeButtons();
@@ -809,77 +760,34 @@ class _CameraPageState extends State<CameraPage>
   void onTakePictureButtonPressed() {
     takePicture().then((XFile? file) {
       if (mounted) {
-        setState(() {
-          videoThumbnailUint8list = null;
-        });
+        setState(() {});
       }
-    });
-  }
-
-  void onVideoRecordButtonPressed() {
-    if (!Preferences.getDisableShutterSound()) {
-      var methodChannel = AndroidMethodChannel();
-      methodChannel.startVideoSound();
-    }
-
-    startVideoRecording().then((_) {
+    }).catchError((error) {
+      print('拍照过程中发生错误: $error');
+      // 确保即使出错也恢复图像流
+      LutPreviewManager.instance.resumeImageStream();
       if (mounted) {
         setState(() {});
       }
-    });
-  }
-
-  void onStopButtonPressed() {
-    stopVideoRecording().then((XFile? file) async {
-      if (mounted) {
-        setState(() {});
-      }
-      if (file != null) {
-        capturedFile = File(file.path);
-
-        final directory = Preferences.getSavePath();
-
-        String fileFormat = capturedFile!.path.split('.').last;
-        String path = '$directory/VID_${timestamp()}.$fileFormat';
-
-        try {
-          final tempFile = capturedFile!.copySync(path);
-
-          final methodChannel = AndroidMethodChannel();
-          await methodChannel.updateItem(file: tempFile);
-          capturedFile = File(path);
-        } catch (e) {
-          if (mounted) showSnackbar(text: e.toString());
-        }
-
-        await File(file.path).delete();
-
-        print('Video recorded to $path');
-        await _refreshGalleryImages();
-      }
-    });
-  }
-
-  void onPauseButtonPressed() {
-    pauseVideoRecording().then((_) {
-      if (mounted) {
-        setState(() {});
-      }
-      print('Video recording paused');
-    });
-  }
-
-  void onResumeButtonPressed() {
-    resumeVideoRecording().then((_) {
-      if (mounted) {
-        setState(() {});
-      }
-      print('Video recording resumed');
     });
   }
 
   //Camera controls
   Future<XFile?> takePicture() async {
+    final CameraController? cameraController = controller;
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      print('Error: select a camera first.');
+      return null;
+    }
+
+    if (cameraController.value.isTakingPicture) {
+      // A capture is already going on, return
+      return null;
+    }
+
+    // 停止图像流以避免冲突
+    await LutPreviewManager.instance.stopImageStream();
+
     setState(() {
       Timer.periodic(
         const Duration(milliseconds: 500),
@@ -894,17 +802,6 @@ class _CameraPageState extends State<CameraPage>
       _timerStopwatch.stop();
       _timerStopwatch.reset();
     });
-
-    final CameraController? cameraController = controller;
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      print('Error: select a camera first.');
-      return null;
-    }
-
-    if (cameraController.value.isTakingPicture) {
-      // A capture is already going on, return
-      return null;
-    }
 
     try {
       final XFile file = await cameraController.takePicture();
@@ -997,97 +894,20 @@ class _CameraPageState extends State<CameraPage>
 
       await File(file.path).delete();
 
+      // 恢复图像流
+      await LutPreviewManager.instance.resumeImageStream();
+
       return file;
     } on CameraException catch (e) {
       print('$e: ${e.description}');
+      // 即使发生错误也要恢复图像流
+      await LutPreviewManager.instance.resumeImageStream();
       return null;
-    }
-  }
-
-  Future<void> startVideoRecording() async {
-    setState(() {
-      Timer.periodic(
-        const Duration(seconds: 1),
-        (Timer t) => setState(() {}),
-      );
-      _stopwatch.start();
-    });
-
-    final CameraController? cameraController = controller;
-
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      print('Error: select a camera first.');
-      return;
-    }
-
-    if (cameraController.value.isRecordingVideo) {
-      // A recording already started, return
-      return;
-    }
-
-    try {
-      await cameraController.startVideoRecording();
-    } on CameraException catch (e) {
-      print('$e: ${e.description}');
-      return;
-    }
-  }
-
-  Future<XFile?> stopVideoRecording() async {
-    setState(() {
-      _stopwatch.stop();
-      _stopwatch.reset();
-    });
-
-    final CameraController? cameraController = controller;
-
-    if (cameraController == null || !cameraController.value.isRecordingVideo) {
+    } catch (e) {
+      print('拍照时发生未知错误: $e');
+      // 即使发生错误也要恢复图像流
+      await LutPreviewManager.instance.resumeImageStream();
       return null;
-    }
-
-    try {
-      return cameraController.stopVideoRecording();
-    } on CameraException catch (e) {
-      print('$e: ${e.description}');
-      return null;
-    }
-  }
-
-  Future<void> pauseVideoRecording() async {
-    setState(() {
-      _stopwatch.stop();
-    });
-
-    final CameraController? cameraController = controller;
-
-    if (cameraController == null || !cameraController.value.isRecordingVideo) {
-      return;
-    }
-
-    try {
-      await cameraController.pauseVideoRecording();
-    } on CameraException catch (e) {
-      print('$e: ${e.description}');
-      rethrow;
-    }
-  }
-
-  Future<void> resumeVideoRecording() async {
-    setState(() {
-      _stopwatch.start();
-    });
-
-    final CameraController? cameraController = controller;
-
-    if (cameraController == null || !cameraController.value.isRecordingVideo) {
-      return;
-    }
-
-    try {
-      await cameraController.resumeVideoRecording();
-    } on CameraException catch (e) {
-      print('$e: ${e.description}');
-      rethrow;
     }
   }
 
@@ -1219,61 +1039,20 @@ class _CameraPageState extends State<CameraPage>
 
   //Thumbnail
   Widget _thumbnailWidget() {
-    if (videoThumbnailUint8list == null && capturedFile == null) {
-      return const Center(child: null); //child: CircularProgressIndicator(),
-    } else {
-      if (videoThumbnailUint8list == null) {
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(7.0),
-            image: DecorationImage(
-              fit: BoxFit.cover,
-              image: FileImage(
-                File(capturedFile!.path),
-              ),
-            ),
-          ),
-        );
-      } else {
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            SizedBox(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(7.0),
-                child: SizedBox.expand(
-                  child: FittedBox(
-                    fit: BoxFit.cover,
-                    child: SizedBox(
-                      width: 42,
-                      height: 42,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(7.0),
-                          image: DecorationImage(
-                            fit: BoxFit.cover,
-                            image: MemoryImage(videoThumbnailUint8list!),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const CircleAvatar(
-              radius: 15,
-              backgroundColor: Colors.black45,
-              child: Icon(
-                Icons.play_arrow,
-                size: 20,
-                color: Colors.white,
-              ),
-            )
-          ],
-        );
-      }
+    if (capturedFile == null) {
+      return const Center(child: null);
     }
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(7.0),
+        image: DecorationImage(
+          fit: BoxFit.cover,
+          image: FileImage(
+            File(capturedFile!.path),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _refreshGalleryImages() async {
@@ -1297,8 +1076,7 @@ class _CameraPageState extends State<CameraPage>
     for (var file in fileList) {
       if (file.path.contains('.jpg') ||
           file.path.contains('.png') ||
-          file.path.contains('.webp') ||
-          file.path.contains('.mp4')) {
+          file.path.contains('.webp')) {
         allFileList.add(File(file.path));
         String name = file.path.split('/').last; //.split('.').first;
         final stat = FileStat.statSync(file.path);
@@ -1324,27 +1102,7 @@ class _CameraPageState extends State<CameraPage>
       }
 
       capturedFile = File('${directory.path}/$recentFileName');
-
-      if (recentFileName.contains('.mp4')) {
-        await _showVideoPlayer();
-      }
     }
-  }
-
-  Future<void> _showVideoPlayer() async {
-    if (capturedFile == null) {
-      return;
-    }
-
-    videoThumbnailUint8list =
-        await video_thumbnail.VideoThumbnail.thumbnailData(
-      video: 'file://${capturedFile?.path}',
-      imageFormat: video_thumbnail.ImageFormat.JPEG,
-      maxWidth: 100,
-      quality: 20,
-    );
-
-    setState(() {});
   }
 
   //Misc
@@ -1392,9 +1150,5 @@ class AndroidMethodChannel {
 
   Future<void> shutterSound() async {
     await _channel.invokeMethod('shutterSound', {});
-  }
-
-  Future<void> startVideoSound() async {
-    await _channel.invokeMethod('startVideoSound', {});
   }
 }

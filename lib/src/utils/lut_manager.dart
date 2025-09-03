@@ -46,10 +46,27 @@ class LutManager {
     try {
       final Directory userLutsDir = await getUserLutsDirectory();
       
-      // 直接复制预设的LUT文件夹
-      await _copyAssetFolder('$_defaultLutPath/CINEMATIC_FILM/', userLutsDir);
-      await _copyAssetFolder('$_defaultLutPath/VINTAGE_FILM/', userLutsDir);
-      await _copyAssetFolder('$_defaultLutPath/MODERN_DIGITAL/', userLutsDir);
+      // 动态发现可用的LUT（尝试加载已知的LUT并检查是否存在）
+      final List<String> potentialLutNames = ['CINEMATIC_FILM', 'VINTAGE_FILM', 'MODERN_DIGITAL'];
+      bool anyLutCopied = false;
+      
+      for (String lutName in potentialLutNames) {
+        try {
+          // 检查是否存在cube文件来确认LUT存在
+          await rootBundle.load('$_defaultLutPath$lutName/$lutName.cube');
+          
+          // 如果文件存在，尝试复制
+          await _copyAssetFolder('$_defaultLutPath$lutName/', lutName, userLutsDir);
+          print('✅ 成功复制LUT: $lutName');
+          anyLutCopied = true;
+        } catch (e) {
+          print('ℹ️ LUT "$lutName" 不存在，跳过');
+        }
+      }
+      
+      if (!anyLutCopied) {
+        print('⚠️ 没有找到任何默认LUT文件');
+      }
       
     } catch (e) {
       print('❌ 复制默认LUT失败: $e');
@@ -57,27 +74,49 @@ class LutManager {
   }
 
   /// 复制assets文件夹到用户目录
-  static Future<void> _copyAssetFolder(String assetPath, Directory targetDir) async {
+  static Future<void> _copyAssetFolder(String assetPath, String lutName, Directory targetDir) async {
     try {
-      // 复制CINEMATIC_FILM.cube文件
-      final ByteData cubeData = await rootBundle.load('${assetPath}CINEMATIC_FILM.cube');
-      final File cubeFile = File('${targetDir.path}/CINEMATIC_FILM.cube');
+      // 复制LUT cube文件
+      final ByteData cubeData = await rootBundle.load('$assetPath$lutName.cube');
+      final File cubeFile = File('${targetDir.path}/$lutName.cube');
       await cubeFile.writeAsBytes(cubeData.buffer.asUint8List());
 
-      // 复制describe.csv文件（如果存在且非空）
+      // 复制describe.csv文件（优先使用正确拼写的版本）
+      String csvContent = '';
+      bool csvFound = false;
+      
+      // 首先尝试加载 describe.csv（正确拼写）
       try {
-        final ByteData csvData = await rootBundle.load('${assetPath}discribe.csv');
-        final File csvFile = File('${targetDir.path}/discribe.csv');
-        await csvFile.writeAsBytes(csvData.buffer.asUint8List());
+        final ByteData csvData = await rootBundle.load('${assetPath}describe.csv');
+        csvContent = String.fromCharCodes(csvData.buffer.asUint8List());
+        csvFound = true;
       } catch (e) {
-        // 创建一个空的描述文件
-        final File csvFile = File('${targetDir.path}/discribe.csv');
-        await csvFile.writeAsString('name,description\nCINEMATIC_FILM,Cinematic film look LUT\n');
+        // 如果正确拼写不存在，尝试加载 discribe.csv（拼写错误的版本，为了向后兼容）
+        try {
+          final ByteData csvData = await rootBundle.load('${assetPath}discribe.csv');
+          csvContent = String.fromCharCodes(csvData.buffer.asUint8List());
+          csvFound = true;
+          print('ℹ️ 使用了拼写错误的描述文件: ${assetPath}discribe.csv');
+        } catch (e2) {
+          print('ℹ️ 没有找到$lutName的描述文件，将创建默认描述');
+        }
+      }
+      
+      // 创建或写入描述文件（使用正确的文件名）
+      final File csvFile = File('${targetDir.path}/${lutName}_describe.csv');
+      
+      if (csvFound && csvContent.trim().isNotEmpty) {
+        // 如果找到了有效的CSV内容，使用它
+        await csvFile.writeAsString(csvContent);
+      } else {
+        // 如果没有找到或内容为空，创建默认描述
+        await csvFile.writeAsString('name,description\n$lutName,$lutName cinematic look LUT\n');
       }
 
-      print('✅ 已复制LUT文件夹: $assetPath');
+      print('✅ 已复制LUT文件: $assetPath -> $lutName');
     } catch (e) {
-      print('❌ 复制文件夹失败 $assetPath: $e');
+      print('❌ 复制LUT失败 $assetPath: $e');
+      throw e; // 重新抛出异常，让调用者知道复制失败
     }
   }
 
@@ -112,23 +151,38 @@ class LutManager {
   static Future<String> _getLutDescription(String lutPath, String lutName) async {
     try {
       final Directory lutsDir = await getUserLutsDirectory();
-      final File describeFile = File('${lutsDir.path}/discribe.csv');
+      
+      // 首先尝试查找对应的描述文件（使用正确拼写）
+      File describeFile = File('${lutsDir.path}/${lutName}_describe.csv');
+      
+      // 如果正确拼写的文件不存在，尝试旧的拼写
+      if (!await describeFile.exists()) {
+        describeFile = File('${lutsDir.path}/${lutName}_discribe.csv');
+      }
+      
+      // 如果对应的描述文件都不存在，则查找通用的描述文件
+      if (!await describeFile.exists()) {
+        describeFile = File('${lutsDir.path}/describe.csv');
+        if (!await describeFile.exists()) {
+          describeFile = File('${lutsDir.path}/discribe.csv');
+        }
+      }
       
       if (await describeFile.exists()) {
         final String content = await describeFile.readAsString();
         final List<String> lines = content.split('\n');
         
         for (String line in lines) {
-          if (line.startsWith(lutName)) {
+          if (line.trim().isNotEmpty && line.startsWith(lutName)) {
             final List<String> parts = line.split(',');
-            return parts.length > 1 ? parts[1] : 'No description';
+            return parts.length > 1 ? parts[1].trim() : 'No description';
           }
         }
       }
       
-      return 'No description';
+      return 'Cinematic look LUT';
     } catch (e) {
-      return 'No description';
+      return 'Cinematic look LUT';
     }
   }
 
@@ -188,7 +242,7 @@ class LutManager {
   static Future<void> _updateLutDescription(String lutName, String description) async {
     try {
       final Directory lutsDir = await getUserLutsDirectory();
-      final File describeFile = File('${lutsDir.path}/discribe.csv');
+      final File describeFile = File('${lutsDir.path}/describe.csv');
       
       List<String> lines = [];
       
@@ -223,7 +277,7 @@ class LutManager {
   static Future<void> _removeLutDescription(String lutName) async {
     try {
       final Directory lutsDir = await getUserLutsDirectory();
-      final File describeFile = File('${lutsDir.path}/discribe.csv');
+      final File describeFile = File('${lutsDir.path}/describe.csv');
       
       if (await describeFile.exists()) {
         final List<String> lines = (await describeFile.readAsString()).split('\n');

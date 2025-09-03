@@ -148,4 +148,27 @@ class Preferences {
       await _preferences!.setBool(prefCaptureAtVolumePress, enable);
   static bool getCaptureAtVolumePress() =>
       _preferences!.getBool(prefCaptureAtVolumePress) ?? true;
+
+  // LUT Selection
+  static Future setSelectedLutName(String lutName) async =>
+      await _preferences!.setString(prefSelectedLutName, lutName);
+  static String getSelectedLutName() =>
+      _preferences!.getString(prefSelectedLutName) ?? '';
+
+  static Future setSelectedLutPath(String lutPath) async =>
+      await _preferences!.setString(prefSelectedLutPath, lutPath);
+  static String getSelectedLutPath() =>
+      _preferences!.getString(prefSelectedLutPath) ?? '';
+
+  // LUT Mix Strength
+  static Future setLutMixStrength(double value) async =>
+      await _preferences!.setDouble(prefLutMixStrength, value);
+  static double getLutMixStrength() =>
+      _preferences!.getDouble(prefLutMixStrength) ?? 1.0;
+
+  // LUT Enabled
+  static Future setLutEnabled(bool enabled) async =>
+      await _preferences!.setBool(prefLutEnabled, enabled);
+  static bool getLutEnabled() =>
+      _preferences!.getBool(prefLutEnabled) ?? true;
 }

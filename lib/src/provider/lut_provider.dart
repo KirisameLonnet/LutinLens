@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:librecamera/src/utils/lut_manager.dart';
+import 'package:librecamera/src/lut/lut_preview_manager.dart';
+import 'package:librecamera/src/utils/preferences.dart';
 
 /// LUT状态管理Provider
 class LutProvider extends ChangeNotifier {
@@ -23,6 +25,9 @@ class LutProvider extends ChangeNotifier {
     try {
       await LutManager.initializeLuts();
       await loadLuts();
+      
+      // 恢复上次选择的LUT
+      await _restoreSelectedLut();
     } catch (e) {
       _setError('初始化LUT失败: $e');
     } finally {
@@ -50,18 +55,42 @@ class LutProvider extends ChangeNotifier {
   }
 
   /// 选择LUT
-  void selectLut(LutFile lut) {
+  Future<void> selectLut(LutFile lut) async {
     if (_currentLut != lut) {
       _currentLut = lut;
+      
+      // 同步更新LutPreviewManager时正确处理图像流
+      try {
+        // 先停止图像流以避免在切换LUT时出现冲突
+        await LutPreviewManager.instance.stopImageStream();
+        
+        // 设置新的LUT
+        await LutPreviewManager.instance.setCurrentLut(lut.path);
+        
+        // 延迟恢复图像流，确保LUT切换完成
+        Future.delayed(const Duration(milliseconds: 200), () {
+          LutPreviewManager.instance.resumeImageStream();
+        });
+        
+        // 持久化选择状态
+        await _saveSelectedLut(lut);
+      } catch (e) {
+        print('更新LUT预览失败: $e');
+        // 即使出错也要尝试恢复图像流
+        LutPreviewManager.instance.resumeImageStream();
+      }
+      
       notifyListeners();
     }
   }
 
   /// 通过名称选择LUT
-  void selectLutByName(String lutName) {
+  Future<void> selectLutByName(String lutName) async {
     final lut = _luts.where((l) => l.name == lutName).firstOrNull;
     if (lut != null) {
-      selectLut(lut);
+      await selectLut(lut);
+    } else {
+      print('警告: 找不到名为 "$lutName" 的LUT');
     }
   }
 
@@ -74,6 +103,12 @@ class LutProvider extends ChangeNotifier {
       final bool success = await LutManager.importLut(sourcePath, lutName);
       if (success) {
         await loadLuts(); // 重新加载列表
+        
+        // 如果导入成功，自动选择新导入的LUT
+        final importedLut = _luts.where((lut) => lut.name == lutName).firstOrNull;
+        if (importedLut != null) {
+          await selectLut(importedLut);
+        }
       } else {
         _setError('导入LUT失败');
       }
@@ -100,7 +135,15 @@ class LutProvider extends ChangeNotifier {
             (lut) => lut.isDefault,
             orElse: () => _luts.isNotEmpty ? _luts.first : LutFile(name: 'None', path: '', description: ''),
           );
-          _currentLut = defaultLut.name.isNotEmpty ? defaultLut : null;
+          if (defaultLut.name.isNotEmpty) {
+            // 使用selectLut方法确保正确的流处理
+            await selectLut(defaultLut);
+          } else {
+            _currentLut = null;
+            // 先停止图像流再禁用LUT预览
+            await LutPreviewManager.instance.stopImageStream();
+            LutPreviewManager.instance.setEnabled(false);
+          }
         }
         await loadLuts(); // 重新加载列表
       } else {
@@ -197,6 +240,48 @@ class LutProvider extends ChangeNotifier {
     }
   }
 
+  /// 保存选择的LUT到持久化存储
+  Future<void> _saveSelectedLut(LutFile lut) async {
+    try {
+      await Preferences.setSelectedLutName(lut.name);
+      await Preferences.setSelectedLutPath(lut.path);
+    } catch (e) {
+      print('保存LUT选择失败: $e');
+    }
+  }
+
+  /// 从持久化存储恢复选择的LUT
+  Future<void> _restoreSelectedLut() async {
+    try {
+      final lutName = Preferences.getSelectedLutName();
+      if (lutName.isNotEmpty && _luts.isNotEmpty) {
+        final savedLut = _luts.where((lut) => lut.name == lutName).firstOrNull;
+        if (savedLut != null) {
+          _currentLut = savedLut;
+          // 在初始化时直接设置LUT，不需要停止/恢复流
+          await LutPreviewManager.instance.setCurrentLut(savedLut.path);
+          notifyListeners();
+          return;
+        }
+      }
+      
+      // 如果没有保存的LUT或找不到，选择默认LUT
+      if (_currentLut == null && _luts.isNotEmpty) {
+        final defaultLut = _luts.firstWhere(
+          (lut) => lut.isDefault,
+          orElse: () => _luts.first,
+        );
+        // 在初始化时直接设置LUT，不需要流处理
+        _currentLut = defaultLut;
+        await LutPreviewManager.instance.setCurrentLut(defaultLut.path);
+        await _saveSelectedLut(defaultLut);
+        notifyListeners();
+      }
+    } catch (e) {
+      print('恢复LUT选择失败: $e');
+    }
+  }
+
   /// 清除所有状态
   void clear() {
     _luts.clear();
@@ -204,6 +289,20 @@ class LutProvider extends ChangeNotifier {
     _isLoading = false;
     _error = null;
     notifyListeners();
+  }
+
+  /// 处理摄像头控制器变化（在切换摄像头时调用）
+  /// 这个方法只处理LUT状态同步，不处理图像流
+  Future<void> onCameraControllerChanged() async {
+    try {
+      // 如果有当前LUT，重新设置以确保与新控制器兼容
+      if (_currentLut != null) {
+        await LutPreviewManager.instance.setCurrentLut(_currentLut!.path);
+        notifyListeners();
+      }
+    } catch (e) {
+      print('处理摄像头控制器变化时出错: $e');
+    }
   }
 }
 

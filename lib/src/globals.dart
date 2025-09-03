@@ -22,3 +22,9 @@ const String prefDisableShutterSound = 'disableShutterSound';
 const String prefMaximumScreenBrightness = 'maximumScreenBrightness';
 const String prefLeftHandedMode = 'leftHandedMode';
 const String prefCaptureAtVolumePress = 'captureAtVolumePress';
+
+// LUT相关的偏好设置
+const String prefSelectedLutName = 'selectedLutName';
+const String prefSelectedLutPath = 'selectedLutPath';
+const String prefLutMixStrength = 'lutMixStrength';
+const String prefLutEnabled = 'lutEnabled';

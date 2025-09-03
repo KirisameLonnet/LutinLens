@@ -50,7 +50,6 @@ dependencies:
   shared_preferences: ^2.0.15
   smooth_page_indicator: ^1.0.0+2
   url_launcher: ^6.1.6
-  video_thumbnail: ^0.5.3
   wakelock_plus: ^1.0.0
   flutter_gl: ^0.0.3
 
@@ -90,7 +89,7 @@ flutter:
   assets:
     - assets/images/
     - assets/Luts/
-    - lib/src/lut/
+    - lib/src/lut/lut_shader.glsl
   generate: true
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
