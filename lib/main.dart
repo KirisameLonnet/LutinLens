@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:librecamera/src/app.dart';
 import 'package:librecamera/src/utils/preferences.dart';
+import 'package:librecamera/src/utils/lut_manager.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -25,6 +26,9 @@ Future<void> main() async {
   }
 
   await Preferences.init();
+
+  // 初始化LUT系统
+  await LutManager.initializeLuts();
 
   //Setting SystmeUIMode for navigation buttons and status bar
   if (!Preferences.getShowNavigationBar()) {

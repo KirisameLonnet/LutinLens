@@ -28,7 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  camera: ^0.10.0
+  camera: ^0.10.6
   camera_platform_interface: ^2.4.1
   device_info_plus: ^9.0.1
   dynamic_color: ^1.6.5
@@ -43,6 +43,7 @@ dependencies:
   intl: ^0.20.2
   native_device_orientation: ^1.1.4
   package_info_plus: ^8.0.0
+  path_provider: ^2.1.1
   permission_handler: ^12.0.0
   provider: ^6.0.3
   screen_brightness: ^0.2.2
@@ -51,6 +52,7 @@ dependencies:
   url_launcher: ^6.1.6
   video_thumbnail: ^0.5.3
   wakelock_plus: ^1.0.0
+  flutter_gl: ^0.0.3
 
 dependency_overrides:
   permission_handler: ^12.0.0
@@ -87,6 +89,8 @@ flutter_native_splash:
 flutter:
   assets:
     - assets/images/
+    - assets/Luts/
+    - lib/src/lut/
   generate: true
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

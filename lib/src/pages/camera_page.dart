@@ -26,6 +26,9 @@ import 'package:librecamera/src/widgets/exposure.dart';
 import 'package:librecamera/src/widgets/flash.dart';
 import 'package:librecamera/src/widgets/focus.dart';
 import 'package:librecamera/src/widgets/capture_control.dart';
+import 'package:librecamera/src/lut/lut_preview_manager.dart';
+import 'package:librecamera/src/lut/lut_settings_page.dart';
+import 'package:librecamera/src/lut/lut_mix_control.dart';
 
 /// Camera example home widget.
 class CameraPage extends StatefulWidget {
@@ -80,6 +83,9 @@ class _CameraPageState extends State<CameraPage>
   StreamSubscription<HardwareButton>? volumeSubscription;
   bool canPressVolume = true;
 
+  //LUT controls
+  bool _showLutMixControl = false;
+
   //QR Code
   /*final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   qr.Barcode? result;
@@ -97,7 +103,20 @@ class _CameraPageState extends State<CameraPage>
       _subscribeOrientationChangeStream();
     }
 
+    // 初始化LUT预览管理器
+    _initializeLutPreviewManager();
+
     onNewCameraSelected(cameras[Preferences.getStartWithRearCamera() ? 0 : 1]);
+  }
+
+  Future<void> _initializeLutPreviewManager() async {
+    try {
+      final manager = LutPreviewManager.instance;
+      final defaultLutPath = await manager.getDefaultLutPath();
+      await manager.setCurrentLut(defaultLutPath);
+    } catch (e) {
+      print('初始化LUT预览管理器失败: $e');
+    }
   }
 
   // In order to get hot reload to work we need to pause the camera if the platform
@@ -248,6 +267,21 @@ class _CameraPageState extends State<CameraPage>
           _zoomWidget(context),
           _bottomControlsWidget(),
           _circleWidget(),
+          // LUT混合控制组件
+          if (_showLutMixControl)
+            Positioned(
+              bottom: 120,
+              left: 0,
+              right: 0,
+              child: LutMixControl(
+                isVisible: _showLutMixControl,
+                onDismiss: () {
+                  setState(() {
+                    _showLutMixControl = false;
+                  });
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -304,18 +338,19 @@ class _CameraPageState extends State<CameraPage>
         child: Listener(
           onPointerDown: (_) => _pointers++,
           onPointerUp: (_) => _pointers--,
-          child: CameraPreview(
-            controller!,
+          child: LutPreviewManager.instance.createPreviewWidget(
+            cameraController,
             child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onScaleStart: _handleScaleStart,
-                onScaleUpdate: _handleScaleUpdate,
-                onTapDown: (TapDownDetails details) =>
-                    _onViewFinderTap(details, constraints),
-              );
-            }),
+              builder: (BuildContext context, BoxConstraints constraints) {
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onScaleStart: _handleScaleStart,
+                  onScaleUpdate: _handleScaleUpdate,
+                  onTapDown: (TapDownDetails details) =>
+                      _onViewFinderTap(details, constraints),
+                );
+              },
+            ),
           ),
         ),
       );
@@ -363,6 +398,10 @@ class _CameraPageState extends State<CameraPage>
                 isDense: true,
                 onNewCameraSelected: _initializeCameraController,
                 isRearCameraSelected: isRearCameraSelected,
+                enabled: controller?.value.isRecordingVideo == false &&
+                    _timerStopwatch.elapsedTicks <= 1,
+              ),
+              _lutSettingsButton(
                 enabled: controller?.value.isRecordingVideo == false &&
                     _timerStopwatch.elapsedTicks <= 1,
               ),
@@ -482,6 +521,46 @@ class _CameraPageState extends State<CameraPage>
               }
             : null,
         controller: controller,
+      ),
+    );
+  }
+
+  Widget _lutSettingsButton({required bool enabled}) {
+    return AnimatedRotation(
+      duration: const Duration(milliseconds: 400),
+      turns:
+          MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
+      child: GestureDetector(
+        onTap: enabled
+            ? () {
+                _stopVolumeButtons();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const LutSettingsPage(),
+                  ),
+                );
+              }
+            : null,
+        onLongPress: enabled
+            ? () {
+                setState(() {
+                  _showLutMixControl = !_showLutMixControl;
+                });
+              }
+            : null,
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.transparent,
+          ),
+          child: Icon(
+            Icons.filter,
+            color: enabled ? Colors.white : Colors.white24,
+            size: 36,
+          ),
+        ),
       ),
     );
   }
@@ -663,7 +742,7 @@ class _CameraPageState extends State<CameraPage>
       cameraDescription,
       resolution,
       enableAudio: isVideoCameraSelected ? Preferences.getEnableAudio() : false,
-      imageFormatGroup: ImageFormatGroup.jpeg,
+      imageFormatGroup: ImageFormatGroup.yuv420, // 改为YUV420以支持LUT预览
     );
 
     controller = cameraController;
