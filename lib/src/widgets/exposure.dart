@@ -1,6 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../l10n/app_localizations.dart';
 
 class ExposureModeControlWidget extends StatefulWidget {
   const ExposureModeControlWidget({
@@ -29,7 +29,7 @@ class _ExposureModeControlWidgetState extends State<ExposureModeControlWidget> {
   }
 
   Future<void> setExposureMode(ExposureMode mode) async {
-    if (widget.controller == null) {
+    if (widget.controller == null || !widget.controller!.value.isInitialized) {
       return;
     }
 
@@ -120,7 +120,8 @@ class _ExposureModeControlWidgetState extends State<ExposureModeControlWidget> {
                   ],
                   onChanged: (item) => setState(() {
                     selectedExposureMode = item as ExposureMode;
-                    if (widget.controller != null) {
+                    if (widget.controller != null && 
+                        widget.controller!.value.isInitialized) {
                       onSetExposureModeButtonPressed(item);
                     }
                   }),
@@ -201,7 +202,7 @@ class _ExposureSliderState extends State<ExposureSlider> {
             ),
             SliderTheme(
               data: SliderThemeData(
-                showValueIndicator: ShowValueIndicator.always,
+                showValueIndicator: ShowValueIndicator.onDrag,
                 overlayShape: SliderComponentShape.noOverlay,
               ),
               child: Slider(

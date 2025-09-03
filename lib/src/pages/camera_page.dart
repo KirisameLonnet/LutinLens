@@ -10,7 +10,7 @@ import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:librecamera/main.dart';
 import 'package:librecamera/src/widgets/format.dart';
 import 'package:librecamera/src/widgets/resolution.dart';
@@ -113,6 +113,10 @@ class _CameraPageState extends State<CameraPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    
+    // Properly dispose the camera controller
+    controller?.dispose();
+    controller = null;
 
     //qrController?.dispose();
 
@@ -129,6 +133,7 @@ class _CameraPageState extends State<CameraPage>
 
     if (state == AppLifecycleState.inactive) {
       cameraController.dispose();
+      controller = null; // Set to null after disposing
       //qrController?.pauseCamera();
     } else if (state == AppLifecycleState.resumed) {
       _initializeCameraController(cameraController.description);
@@ -1021,7 +1026,7 @@ class _CameraPageState extends State<CameraPage>
       quarterTurns: 3,
       child: SliderTheme(
         data: SliderThemeData(
-          showValueIndicator: ShowValueIndicator.always,
+          showValueIndicator: ShowValueIndicator.onDrag,
           overlayShape: SliderComponentShape.noOverlay,
         ),
         child: Slider(
@@ -1084,7 +1089,7 @@ class _CameraPageState extends State<CameraPage>
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeInOut,
               builder: (context, scale, child) {
-                return Transform.scale(scale: scale as double, child: child);
+                return Transform.scale(scale: scale, child: child);
               },
               child: Container(
                 decoration: BoxDecoration(

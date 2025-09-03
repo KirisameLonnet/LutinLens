@@ -11,6 +11,10 @@
 migrate_working_dir/
 untranslatedMessages.txt
 
+# Nix related
+.direnv/
+.envdir/
+
 # IntelliJ related
 *.iml
 *.ipr
@@ -33,6 +37,9 @@ untranslatedMessages.txt
 .pub/
 /build/
 
+# Generated localization files
+**/l10n/app_localizations*.dart
+
 # Web related
 lib/generated_plugin_registrant.dart
 
@@ -46,3 +53,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android Gradle related
+android/.gradle-user-home/
+android/.kotlin/
+.gradle/

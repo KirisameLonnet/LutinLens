@@ -10,7 +10,7 @@ import 'package:librecamera/src/utils/preferences.dart';
 import 'package:librecamera/src/widgets/format.dart';
 import 'package:librecamera/src/widgets/resolution.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:screen_brightness/screen_brightness.dart';
@@ -139,7 +139,7 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context, snapshot) {
         return _aboutListTile(
             version: snapshot.hasData
-                ? (snapshot.data! as PackageInfo).version
+                ? snapshot.data!.version
                 : null);
       },
     );
@@ -536,11 +536,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: (() async {
-        await widget.onNewCameraSelected(widget.controller!.description);
-        return true;
-      }),
+    return PopScope(
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) {
+          await widget.onNewCameraSelected(widget.controller!.description);
+        }
+      },
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(

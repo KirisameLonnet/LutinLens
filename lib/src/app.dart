@@ -5,7 +5,7 @@ import 'package:librecamera/src/pages/camera_page.dart';
 import 'package:librecamera/src/pages/onboarding_page.dart';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:librecamera/src/provider/locale_provider.dart';
 import 'package:librecamera/src/provider/theme_provider.dart';
 import 'package:provider/provider.dart';

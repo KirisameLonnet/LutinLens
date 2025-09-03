@@ -1,7 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:librecamera/main.dart';
 
 class CaptureControlWidget extends StatefulWidget {
@@ -68,7 +68,7 @@ class _CaptureControlWidgetState extends State<CaptureControlWidget>
           MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
       child: IconButton(
         padding: EdgeInsets.zero,
-        onPressed: () => cameraController!.value.isRecordingPaused
+        onPressed: () => cameraController.value.isRecordingPaused
             ? widget.onResumeButtonPressed()
             : widget.onPauseButtonPressed(),
         icon: Stack(

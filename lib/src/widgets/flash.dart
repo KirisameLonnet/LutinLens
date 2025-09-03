@@ -1,7 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:librecamera/src/utils/preferences.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../l10n/app_localizations.dart';
 
 class FlashModeWidget extends StatefulWidget {
   const FlashModeWidget({
@@ -21,7 +21,7 @@ class FlashModeWidget extends StatefulWidget {
 
 class _FlashModeWidgetState extends State<FlashModeWidget> {
   void _toggleFlashMode() {
-    if (widget.controller != null) {
+    if (widget.controller != null && widget.controller!.value.isInitialized) {
       if (widget.controller?.value.flashMode == FlashMode.off) {
         _onSetFlashModeButtonPressed(
             widget.isVideoCameraSelected ? FlashMode.torch : FlashMode.always);
@@ -49,7 +49,7 @@ class _FlashModeWidgetState extends State<FlashModeWidget> {
   }
 
   Future<void> _setFlashMode(FlashMode mode) async {
-    if (widget.controller == null) {
+    if (widget.controller == null || !widget.controller!.value.isInitialized) {
       return;
     }
 
@@ -121,8 +121,6 @@ IconData _getFlashlightIcon({required FlashMode flashMode}) {
       return Icons.flash_auto;
     case FlashMode.torch:
       return Icons.highlight;
-    default:
-      return Icons.flashlight_on;
   }
 }
 

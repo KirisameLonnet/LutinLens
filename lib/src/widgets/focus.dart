@@ -1,6 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../l10n/app_localizations.dart';
 
 class FocusModeControlWidget extends StatefulWidget {
   const FocusModeControlWidget({
@@ -28,7 +28,7 @@ class _FocusModeControlWidgetState extends State<FocusModeControlWidget> {
   }
 
   Future<void> setFocusMode(FocusMode mode) async {
-    if (widget.controller == null) {
+    if (widget.controller == null || !widget.controller!.value.isInitialized) {
       return;
     }
 
@@ -116,7 +116,8 @@ class _FocusModeControlWidgetState extends State<FocusModeControlWidget> {
                   .toList(),*/
               onChanged: (item) => setState(() {
                 selectedFocusMode = item as FocusMode;
-                if (widget.controller != null) {
+                if (widget.controller != null && 
+                    widget.controller!.value.isInitialized) {
                   onSetFocusModeButtonPressed(item);
                 }
               }),
