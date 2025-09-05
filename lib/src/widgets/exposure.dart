@@ -24,7 +24,7 @@ class _ExposureModeControlWidgetState extends State<ExposureModeControlWidget> {
       if (mounted) {
         setState(() {});
       }
-      print('Exposure mode set to ${mode.toString().split('.').last}');
+      debugPrint('Exposure mode set to ${mode.toString().split('.').last}');
     });
   }
 
@@ -36,7 +36,7 @@ class _ExposureModeControlWidgetState extends State<ExposureModeControlWidget> {
     try {
       await widget.controller!.setExposureMode(mode);
     } on CameraException catch (e) {
-      print('Error: ${e.code}\nError Message: ${e.description}');
+      debugPrint('Error: ${e.code}\nError Message: ${e.description}');
       rethrow;
     }
   }

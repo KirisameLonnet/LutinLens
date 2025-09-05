@@ -7,10 +7,7 @@ import 'package:librecamera/src/pages/onboarding_page.dart';
 import 'package:librecamera/src/provider/locale_provider.dart';
 import 'package:librecamera/src/provider/theme_provider.dart';
 import 'package:librecamera/src/utils/preferences.dart';
-import 'package:librecamera/src/widgets/format.dart';
 import 'package:librecamera/src/widgets/resolution.dart';
-import 'package:librecamera/src/pages/lut_management_page.dart';
-import 'package:librecamera/src/lut/lut_settings_page.dart';
 
 import '../../l10n/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -259,13 +256,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _imageCompressionFormat() {
-    return ListTile(
-      title: Text(AppLocalizations.of(context)!.format),
-      subtitle: Text(AppLocalizations.of(context)!.format_description),
-      trailing: const FormatButton(),
-    );
-  }
+  // 已移除：图片格式切换（固定 JPEG）
 
   Widget _imageCompressionTile() {
     return ListTile(
@@ -551,7 +542,9 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: (() async {
               await widget.onNewCameraSelected(widget.controller!.description);
               if (!mounted) return;
-              Navigator.pop(context);
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
             }),
             tooltip: AppLocalizations.of(context)!.back,
           ),
@@ -576,12 +569,7 @@ class _SettingsPageState extends State<SettingsPage> {
             const Divider(),
             _enableExposureSliderTile(),
             const Divider(),
-            // LUT section
-            _headingTile('LUT'),
-            _lutManagementTile(),
-            const Divider(),
-            _lutSettingsTile(),
-            const Divider(),
+            // 已移除：LUT 设置入口
             _headingTile(AppLocalizations.of(context)!.cameraBehaviour),
             _resolutionTile(),
             const Divider(),
@@ -596,8 +584,7 @@ class _SettingsPageState extends State<SettingsPage> {
             _headingTile(AppLocalizations.of(context)!.saving),
             _flipPhotosFrontCameraTile(),
             const Divider(),
-            _imageCompressionFormat(),
-            const Divider(),
+            // 已移除：图片格式切换（固定 JPEG）
             _imageCompressionTile(),
             const Divider(),
             _keepEXIFMetadataTile(),
@@ -612,29 +599,5 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _lutManagementTile() {
-    return ListTile(
-      leading: const Icon(Icons.photo_filter),
-      title: const Text('LUT 管理'),
-      subtitle: const Text('导入、选择、导出或删除 LUT'),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const LutManagementPage()),
-        );
-      },
-    );
-  }
-
-  Widget _lutSettingsTile() {
-    return ListTile(
-      leading: const Icon(Icons.tune),
-      title: const Text('LUT 设置'),
-      subtitle: const Text('启用预览与强度调节'),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const LutSettingsPage()),
-        );
-      },
-    );
-  }
+  // 已移除：LUT 设置入口
 }

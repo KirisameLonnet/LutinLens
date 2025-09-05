@@ -43,7 +43,7 @@ class _LutPreviewState extends State<LutPreview> {
       // TODO: 初始化OpenGL ES环境
       setState(() => _isInitialized = true);
     } catch (e) {
-      print('LUT预览初始化失败: $e');
+      debugPrint('LUT预览初始化失败: $e');
     }
   }
 

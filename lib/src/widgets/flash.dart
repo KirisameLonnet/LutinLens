@@ -44,7 +44,7 @@ class _FlashModeWidgetState extends State<FlashModeWidget> {
       if (mounted) {
         setState(() {});
       }
-      print('Flash mode set to ${mode.toString().split('.').last}');
+      debugPrint('Flash mode set to ${mode.toString().split('.').last}');
     });
   }
 
@@ -57,7 +57,7 @@ class _FlashModeWidgetState extends State<FlashModeWidget> {
       await widget.controller!.setFlashMode(mode);
       Preferences.setFlashMode(mode.name);
     } on CameraException catch (e) {
-      print('Error: ${e.code}\nError Message: ${e.description}');
+      debugPrint('Error: ${e.code}\nError Message: ${e.description}');
       rethrow;
     }
   }

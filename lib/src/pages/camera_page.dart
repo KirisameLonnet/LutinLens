@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 //import 'package:flutter/foundation.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -12,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
 import 'package:librecamera/main.dart';
-import 'package:librecamera/src/widgets/format.dart';
 import 'package:librecamera/src/widgets/resolution.dart';
 import 'package:librecamera/src/widgets/timer.dart';
 import 'package:native_device_orientation/native_device_orientation.dart';
@@ -26,10 +26,9 @@ import 'package:librecamera/src/widgets/flash.dart';
 import 'package:librecamera/src/widgets/focus.dart';
 import 'package:librecamera/src/widgets/capture_control.dart';
 import 'package:librecamera/src/lut/lut_preview_manager.dart';
-import 'package:librecamera/src/lut/lut_mix_control.dart';
-import 'package:librecamera/src/widgets/lut_selector.dart';
-import 'package:librecamera/src/provider/lut_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:librecamera/src/lut/cube_loader.dart';
+import 'package:librecamera/src/lut/software_lut_processor.dart';
+import 'package:librecamera/src/widgets/lut_controls.dart';
 
 /// Camera example home widget.
 class CameraPage extends StatefulWidget {
@@ -79,8 +78,7 @@ class _CameraPageState extends State<CameraPage>
   StreamSubscription<HardwareButton>? volumeSubscription;
   bool canPressVolume = true;
 
-  //LUT controls
-  bool _showLutMixControl = false;
+  //LUT controls 已迁移为顶部模式行中的二级菜单样式
 
   //QR Code
   /*final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
@@ -102,11 +100,6 @@ class _CameraPageState extends State<CameraPage>
     // 初始化LUT预览管理器
     _initializeLutPreviewManager();
 
-    // 初始化LUT Provider
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<LutProvider>(context, listen: false).initializeLuts();
-    });
-
     onNewCameraSelected(cameras[Preferences.getStartWithRearCamera() ? 0 : 1]);
   }
 
@@ -114,10 +107,20 @@ class _CameraPageState extends State<CameraPage>
     try {
       final manager = LutPreviewManager.instance;
       await manager.initializeFromPreferences();
-      final defaultLutPath = await manager.getDefaultLutPath();
-      await manager.setCurrentLut(defaultLutPath);
+      final enabled = Preferences.getLutEnabled();
+      if (!enabled) {
+        manager.disableLut();
+      } else {
+        final savedPath = Preferences.getSelectedLutPath();
+        if (savedPath.isNotEmpty) {
+          await manager.setCurrentLut(savedPath);
+        } else {
+          final defaultLutPath = await manager.getDefaultLutPath();
+          await manager.setCurrentLut(defaultLutPath);
+        }
+      }
     } catch (e) {
-      print('初始化LUT预览管理器失败: $e');
+      debugPrint('初始化LUT预览管理器失败: $e');
     }
   }
 
@@ -262,34 +265,7 @@ class _CameraPageState extends State<CameraPage>
           _zoomWidget(context),
           _bottomControlsWidget(),
           _circleWidget(),
-          // 紧凑的LUT选择器 - 显示在底部
-          Positioned(
-            bottom: 180,
-            left: 16,
-            child: Consumer<LutProvider>(
-              builder: (context, lutProvider, child) {
-                if (!lutProvider.hasLuts || _timerStopwatch.elapsedTicks > 1) {
-                  return const SizedBox.shrink();
-                }
-                return const CompactLutSelector();
-              },
-            ),
-          ),
-          // LUT混合控制组件
-          if (_showLutMixControl)
-            Positioned(
-              bottom: 120,
-              left: 0,
-              right: 0,
-              child: LutMixControl(
-                isVisible: _showLutMixControl,
-                onDismiss: () {
-                  setState(() {
-                    _showLutMixControl = false;
-                  });
-                },
-              ),
-            ),
+          // 已移除：旧的 LUT 弹层组件
         ],
       ),
     );
@@ -403,9 +379,7 @@ class _CameraPageState extends State<CameraPage>
                 isRearCameraSelected: isRearCameraSelected,
                 enabled: _timerStopwatch.elapsedTicks <= 1,
               ),
-              _lutSelectorWidget(
-                enabled: _timerStopwatch.elapsedTicks <= 1,
-              ),
+              // 已移除：LUT 选择按钮（后续重构）
               _settingsWidget(
                 enabled: _timerStopwatch.elapsedTicks <= 1,
               ),
@@ -486,27 +460,7 @@ class _CameraPageState extends State<CameraPage>
     );
   }
 
-  Widget _lutSelectorWidget({required bool enabled}) {
-    return AnimatedRotation(
-      duration: const Duration(milliseconds: 400),
-      turns: MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
-      child: enabled
-          ? const LutSelector()
-          : Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.transparent,
-              ),
-              child: const Icon(
-                Icons.photo_filter,
-                color: Colors.white24,
-                size: 36,
-              ),
-            ),
-    );
-  }
+  // 已移除：_lutSelectorWidget（后续重构）
 
   Widget _thumbnailPreviewWidget() {
     return _timerStopwatch.elapsedTicks > 1
@@ -530,20 +484,7 @@ class _CameraPageState extends State<CameraPage>
                           await deviceInfo.androidInfo;
                       int sdkInt = androidInfo.version.sdkInt;
 
-                      final String mimeType;
-                      switch (getCompressFormat()) {
-                        case CompressFormat.jpeg:
-                          mimeType = 'image/jpeg';
-                          break;
-                        case CompressFormat.png:
-                          mimeType = 'image/png';
-                          break;
-                        case CompressFormat.webp:
-                          mimeType = 'image/webp';
-                          break;
-                        default:
-                          mimeType = 'image/jpeg';
-                      }
+                      const String mimeType = 'image/jpeg';
 
                       final methodChannel = AndroidMethodChannel();
                       await methodChannel.openItem(
@@ -576,6 +517,7 @@ class _CameraPageState extends State<CameraPage>
         ),
       if (Preferences.getEnableExposureSlider())
         const Divider(color: Colors.blue),
+      // 已移除：旧的 LUT 预设/强度按钮与分割线
       Container(
         padding: const EdgeInsets.fromLTRB(0, 8.0, 0, 8.0),
         child: CaptureControlWidget(
@@ -622,6 +564,7 @@ class _CameraPageState extends State<CameraPage>
       children: <Widget>[
         ExposureModeControlWidget(controller: controller),
         FocusModeControlWidget(controller: controller),
+        const LutControlWidget(),
       ],
     );
   }
@@ -635,17 +578,14 @@ class _CameraPageState extends State<CameraPage>
       try {
         await controller!.setDescription(cameraDescription);
         
-        // 通知LutProvider摄像头控制器已更改
-        if (mounted) {
-          Provider.of<LutProvider>(context, listen: false).onCameraControllerChanged();
-        }
+        // 已移除：LutProvider 摄像头控制器同步（后续重构）
         
         // 延迟重新启动图像流，确保摄像头切换完成
         Future.delayed(const Duration(milliseconds: 300), () {
           LutPreviewManager.instance.resumeImageStream();
         });
       } catch (e) {
-        print('切换摄像头时出错: $e');
+        debugPrint('切换摄像头时出错: $e');
         // 即使出错也要尝试恢复图像流
         LutPreviewManager.instance.resumeImageStream();
       }
@@ -664,7 +604,7 @@ class _CameraPageState extends State<CameraPage>
       try {
         await controller!.dispose();
       } catch (e) {
-        print('清理旧控制器时出错: $e');
+        debugPrint('清理旧控制器时出错: $e');
       }
       controller = null;
     }
@@ -701,13 +641,13 @@ class _CameraPageState extends State<CameraPage>
     } on CameraException catch (e) {
       switch (e.code) {
         case 'CameraAccessDenied':
-          print('You have denied camera access.');
+          debugPrint('You have denied camera access.');
           break;
         case 'AudioAccessDenied':
-          print('You have denied audio access.');
+          debugPrint('You have denied audio access.');
           break;
         default:
-          print('$e: ${e.description}');
+          debugPrint('$e: ${e.description}');
           break;
       }
       
@@ -715,7 +655,7 @@ class _CameraPageState extends State<CameraPage>
       LutPreviewManager.instance.resumeImageStream();
       return; // 提前返回，避免重复调用resumeImageStream
     } catch (e) {
-      print('初始化相机控制器时发生未知错误: $e');
+      debugPrint('初始化相机控制器时发生未知错误: $e');
       // 即使发生未知错误也要尝试恢复图像流
       LutPreviewManager.instance.resumeImageStream();
       return; // 提前返回，避免重复调用resumeImageStream
@@ -725,9 +665,6 @@ class _CameraPageState extends State<CameraPage>
       await _refreshGalleryImages();
 
       setState(() {});
-      
-      // 通知LutProvider摄像头控制器已更改
-      Provider.of<LutProvider>(context, listen: false).onCameraControllerChanged();
       
       // 延迟重新启动图像流，确保相机完全初始化
       Future.delayed(const Duration(milliseconds: 300), () {
@@ -742,7 +679,7 @@ class _CameraPageState extends State<CameraPage>
     cameraController.startImageStream((image) async {
       CodeResult result = await processCameraImage(image);
       if (result.isValidBool) {
-        print('QR: ${result.textString}');
+        debugPrint('QR: ${result.textString}');
       }
       return null;
     });*/
@@ -763,7 +700,7 @@ class _CameraPageState extends State<CameraPage>
         setState(() {});
       }
     }).catchError((error) {
-      print('拍照过程中发生错误: $error');
+      debugPrint('拍照过程中发生错误: $error');
       // 确保即使出错也恢复图像流
       LutPreviewManager.instance.resumeImageStream();
       if (mounted) {
@@ -776,7 +713,7 @@ class _CameraPageState extends State<CameraPage>
   Future<XFile?> takePicture() async {
     final CameraController? cameraController = controller;
     if (cameraController == null || !cameraController.value.isInitialized) {
-      print('Error: select a camera first.');
+      debugPrint('Error: select a camera first.');
       return null;
     }
 
@@ -817,21 +754,8 @@ class _CameraPageState extends State<CameraPage>
       final directory = Preferences.getSavePath();
 
       //String fileFormat = capturedFile!.path.split('.').last;
-      final CompressFormat format = getCompressFormat();
-      final String fileFormat;
-      switch (getCompressFormat()) {
-        case CompressFormat.jpeg:
-          fileFormat = 'jpg';
-          break;
-        case CompressFormat.png:
-          fileFormat = 'png';
-          break;
-        case CompressFormat.webp:
-          fileFormat = 'webp';
-          break;
-        default:
-          fileFormat = 'jpg';
-      }
+      const CompressFormat format = CompressFormat.jpeg;
+      const String fileFormat = 'jpg';
 
       String path = '$directory/IMG_${timestamp()}.$fileFormat';
 
@@ -852,12 +776,37 @@ class _CameraPageState extends State<CameraPage>
         if (res.name == resolutionString) resolution = res;
       }*/
 
-      Uint8List? newFileBytes = await FlutterImageCompress.compressWithFile(
-        capturedFile!.path,
-        quality: Preferences.getCompressQuality(),
-        keepExif: Preferences.getKeepEXIFMetadata(),
-        format: format,
-      );
+      Uint8List? newFileBytes;
+      try {
+        final manager = LutPreviewManager.instance;
+        if (manager.isEnabled && manager.mixStrength > 0.0 && manager.currentLutPath != null) {
+          // 读取当前文件并应用 LUT，再按目标格式编码
+          final srcBytes = await capturedFile!.readAsBytes();
+          newFileBytes = await _applyLutToImageBytes(
+            srcBytes: srcBytes,
+            lutPath: manager.currentLutPath!,
+            mixStrength: manager.mixStrength,
+            format: format,
+            quality: Preferences.getCompressQuality(),
+          );
+        } else {
+          // 保持原有压缩路径
+          newFileBytes = await FlutterImageCompress.compressWithFile(
+            capturedFile!.path,
+            quality: Preferences.getCompressQuality(),
+            keepExif: Preferences.getKeepEXIFMetadata(),
+            format: format,
+          );
+        }
+      } catch (e) {
+        // 回退到原有压缩路径
+        newFileBytes = await FlutterImageCompress.compressWithFile(
+          capturedFile!.path,
+          quality: Preferences.getCompressQuality(),
+          keepExif: Preferences.getKeepEXIFMetadata(),
+          format: format,
+        );
+      }
 
       //var tempFile = capturedFile!.copySync('$directory/IMG_${timestamp()}.$fileFormat');
       try {
@@ -886,7 +835,7 @@ class _CameraPageState extends State<CameraPage>
 
       //OLD without compression and removal of EXIF data: await capturedFile!.copy(path);
 
-      print('Picture saved to $path');
+      debugPrint('Picture saved to $path');
 
       takingPicture = false;
 
@@ -899,16 +848,132 @@ class _CameraPageState extends State<CameraPage>
 
       return file;
     } on CameraException catch (e) {
-      print('$e: ${e.description}');
+      debugPrint('$e: ${e.description}');
       // 即使发生错误也要恢复图像流
       await LutPreviewManager.instance.resumeImageStream();
       return null;
     } catch (e) {
-      print('拍照时发生未知错误: $e');
+      debugPrint('拍照时发生未知错误: $e');
       // 即使发生错误也要恢复图像流
       await LutPreviewManager.instance.resumeImageStream();
       return null;
     }
+  }
+
+  /// 将 LUT 应用于整张图片字节，并按目标格式编码
+  Future<Uint8List> _applyLutToImageBytes({
+    required Uint8List srcBytes,
+    required String lutPath,
+    required double mixStrength,
+    required CompressFormat format,
+    required int quality,
+  }) async {
+    // 解码图片
+    final img.Image? original = img.decodeImage(srcBytes);
+    if (original == null) return srcBytes;
+
+    final int w = original.width;
+    final int h = original.height;
+    // 获取 RGBA 像素
+    final Uint8List rgba = Uint8List.fromList(
+      original.getBytes(order: img.ChannelOrder.rgba),
+    );
+
+    // 载入 LUT
+    ByteData lutData;
+    if (lutPath.startsWith('assets/')) {
+      lutData = await rootBundle.load(lutPath);
+    } else {
+      final bytes = await File(lutPath).readAsBytes();
+      lutData = ByteData.sublistView(bytes);
+    }
+    final lut = await loadCubeLut(lutData);
+    final processor = SoftwareLutProcessor(lut);
+
+    // 应用 LUT
+    final Uint8List mixed = processor.processImageData(rgba, w, h, mixStrength);
+    // 重建图像
+    final img.Image processed = img.Image.fromBytes(
+      width: w,
+      height: h,
+      bytes: mixed.buffer,
+      numChannels: 4,
+      order: img.ChannelOrder.rgba,
+    );
+
+    // 按目标格式编码
+    Uint8List out;
+    switch (format) {
+      case CompressFormat.jpeg:
+        out = Uint8List.fromList(img.encodeJpg(processed, quality: quality));
+        break;
+      case CompressFormat.png:
+        out = Uint8List.fromList(img.encodePng(processed));
+        break;
+      case CompressFormat.webp:
+        // Fallback: encode as PNG when WebP encoder is unavailable
+        out = Uint8List.fromList(img.encodePng(processed));
+        break;
+      default:
+        out = Uint8List.fromList(img.encodeJpg(processed, quality: quality));
+        break;
+    }
+    // 可选：迁移 EXIF 到 JPEG
+    if (format == CompressFormat.jpeg && Preferences.getKeepEXIFMetadata()) {
+      try {
+        out = _injectJpegExif(out, srcBytes);
+      } catch (_) {}
+    }
+    return out;
+  }
+
+  /// 从原始 JPEG 中提取 EXIF (APP1) 段并注入到新 JPEG（若存在）
+  Uint8List _injectJpegExif(Uint8List newJpeg, Uint8List originalBytes) {
+    // 检查 SOI
+    if (newJpeg.length < 4 || originalBytes.length < 4) return newJpeg;
+    if (!(newJpeg[0] == 0xFF && newJpeg[1] == 0xD8)) return newJpeg;
+    if (!(originalBytes[0] == 0xFF && originalBytes[1] == 0xD8)) return newJpeg;
+
+    // 在原图中寻找 APP1 Exif 段
+    int i = 2;
+    while (i + 4 < originalBytes.length) {
+      if (originalBytes[i] != 0xFF) { i++; continue; }
+      // 跳过填充 FF
+      while (i < originalBytes.length && originalBytes[i] == 0xFF) { i++; }
+      if (i >= originalBytes.length) break;
+      final marker = originalBytes[i++];
+      if (marker == 0xD9 || marker == 0xDA) {
+        break; // EOI or SOS
+      }
+      if (i + 1 >= originalBytes.length) break;
+      final len = (originalBytes[i] << 8) | originalBytes[i + 1];
+      final segStart = i - 2; // includes 0xFF marker already consumed? adjust back 2 bytes
+      final dataStart = i + 2;
+      final segEnd = dataStart + len;
+      if (segEnd > originalBytes.length) break;
+
+      // APP1 Exif
+      if (marker == 0xE1 && len >= 6) {
+        // Check Exif header
+        if (originalBytes[dataStart] == 0x45 && // 'E'
+            originalBytes[dataStart + 1] == 0x78 && // 'x'
+            originalBytes[dataStart + 2] == 0x69 && // 'i'
+            originalBytes[dataStart + 3] == 0x66 && // 'f'
+            originalBytes[dataStart + 4] == 0x00 &&
+            originalBytes[dataStart + 5] == 0x00) {
+          final exifSeg = originalBytes.sublist(segStart, segEnd);
+          // 将 EXIF 插入新 JPEG 的 SOI 之后
+          final out = BytesBuilder();
+          out.add([0xFF, 0xD8]);
+          out.add(exifSeg);
+          // 剩余新图从索引2开始加入
+          out.add(newJpeg.sublist(2));
+          return out.toBytes();
+        }
+      }
+      i = segEnd;
+    }
+    return newJpeg;
   }
 
   //Zoom
@@ -1032,7 +1097,7 @@ class _CameraPageState extends State<CameraPage>
     try {
       offset = await controller!.setExposureOffset(offset);
     } on CameraException catch (e) {
-      print('$e: ${e.description}');
+      debugPrint('$e: ${e.description}');
       rethrow;
     }
   }

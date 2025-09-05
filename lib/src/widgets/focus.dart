@@ -23,7 +23,7 @@ class _FocusModeControlWidgetState extends State<FocusModeControlWidget> {
       if (mounted) {
         setState(() {});
       }
-      print('Focus mode set to ${mode.toString().split('.').last}');
+      debugPrint('Focus mode set to ${mode.toString().split('.').last}');
     });
   }
 
@@ -35,7 +35,7 @@ class _FocusModeControlWidgetState extends State<FocusModeControlWidget> {
     try {
       await widget.controller!.setFocusMode(mode);
     } on CameraException catch (e) {
-      print('Error: ${e.code}\nError Message: ${e.description}');
+      debugPrint('Error: ${e.code}\nError Message: ${e.description}');
       rethrow;
     }
   }

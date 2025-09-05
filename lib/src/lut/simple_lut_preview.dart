@@ -38,7 +38,6 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
   // Realtime preview processing
   bool _streaming = false;
   bool _isProcessing = false;
-  DateTime _lastFrameTime = DateTime.fromMillisecondsSinceEpoch(0);
   ui.Image? _processedFrame;
   int _frameW = 0;
   int _frameH = 0;
@@ -57,14 +56,16 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
   @override
   void didUpdateWidget(SimpleLutPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.lutPath != widget.lutPath || 
+    if (oldWidget.lutPath != widget.lutPath ||
         oldWidget.mixStrength != widget.mixStrength) {
       if (oldWidget.lutPath != widget.lutPath) {
         _loadLut();
       } else {
         setState(() {}); // 触发重绘以更新混合强度显示
         // Stop or start stream based on strength to save CPU
-        if (widget.mixStrength <= 0.0 && _streaming && widget.cameraController.value.isInitialized) {
+        if (widget.mixStrength <= 0.0 &&
+            _streaming &&
+            widget.cameraController.value.isInitialized) {
           widget.cameraController.stopImageStream();
           _streaming = false;
         } else if (widget.mixStrength > 0.0) {
@@ -77,9 +78,9 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
   Future<void> _loadLut() async {
     try {
       if (_loadedLutPath == widget.lutPath) return;
-      
+
       ByteData lutData;
-      
+
       // 判断是否为用户目录的文件路径还是assets路径
       if (widget.lutPath.startsWith('assets/')) {
         // assets路径，使用DefaultAssetBundle加载
@@ -90,13 +91,13 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
         final bytes = await file.readAsBytes();
         lutData = ByteData.sublistView(bytes);
       }
-      
+
       final lut = await loadCubeLut(lutData);
-      
+
       // 提取LUT名称
       final pathParts = widget.lutPath.split('/');
       final fileName = pathParts.last.replaceAll('.cube', '');
-      
+
       setState(() {
         _currentLut = lut;
         _loadedLutPath = widget.lutPath;
@@ -106,7 +107,7 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
 
       _startImageStreamIfNeeded();
     } catch (e) {
-      print('加载LUT失败: $e');
+      debugPrint('加载LUT失败: $e');
       setState(() {
         _lutName = 'Error';
         _isInitialized = true;
@@ -121,38 +122,29 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
 
     try {
       widget.cameraController.startImageStream((image) async {
-        final now = DateTime.now();
-        // Process at ~6 fps to reduce load
-        if (_isProcessing || now.difference(_lastFrameTime).inMilliseconds < 160) return;
-        _lastFrameTime = now;
+        // 以尽可能快的速度进行处理（如设备性能不足，将自然降到可承受帧率）
+        if (_isProcessing) return;
 
         if (_currentLut == null) return;
         _isProcessing = true;
-        try {
-          await _processFrame(image);
-        } catch (_) {
-          // swallow frame errors
-        } finally {
-          _isProcessing = false;
-        }
+        await _processFrame(image);
+        _isProcessing = false;
       });
       _streaming = true;
     } catch (e) {
-      print('启动图像流失败: $e');
+      // 忽略启动时的错误
     }
   }
 
   /// 外部调用：停止图像流
   Future<void> stopImageStream() async {
-    if (!_streaming) return;
-    
     try {
-      if (widget.cameraController.value.isInitialized) {
+      if (_streaming && widget.cameraController.value.isInitialized) {
         await widget.cameraController.stopImageStream();
       }
     } catch (e) {
       // 忽略停止时的错误，可能已经停止
-      print('停止图像流时出错（可能已停止）: $e');
+      debugPrint('停止图像流时出错（可能已停止）: $e');
     } finally {
       _streaming = false;
     }
@@ -163,7 +155,7 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
     if (_streaming) return;
     if (!widget.cameraController.value.isInitialized) return;
     if (widget.mixStrength <= 0.0) return;
-    
+
     // 延迟一小段时间确保相机操作完成
     await Future.delayed(const Duration(milliseconds: 200));
     _startImageStreamIfNeeded();
@@ -173,14 +165,12 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
   void dispose() {
     // Unregister stream control callbacks
     LutPreviewManager.instance.unregisterStreamCallbacks();
-    
+
     if (_streaming && widget.cameraController.value.isInitialized) {
       // Stop image stream; ignore errors if already stopped
       try {
         widget.cameraController.stopImageStream();
-      } catch (e) {
-        // 忽略停止时的错误
-      }
+      } catch (_) {}
     }
     _streaming = false;
     _processedFrame?.dispose();
@@ -192,12 +182,9 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
     // Downscale target for preview overlay
     final int srcW = image.width;
     final int srcH = image.height;
-    final int targetMax = 360; // keep small for performance
-    final double scale = (srcW > srcH)
-        ? (targetMax / srcW)
-        : (targetMax / srcH);
-    final int dstW = (srcW * scale).round().clamp(80, targetMax);
-    final int dstH = (srcH * scale).round().clamp(80, targetMax);
+    // 使用相机原始分辨率进行处理（无分辨率限制）
+    final int dstW = srcW;
+    final int dstH = srcH;
 
     // Convert YUV420 to RGBA at low resolution by sampling
     final rgba = _yuv420ToRgbaDownsampled(image, dstW, dstH);
@@ -292,10 +279,7 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // 基础相机预览
-    Widget preview = CameraPreview(widget.cameraController);
-    
-    // 创建LUT信息覆盖层 + 图像覆盖效果
+    // 创建仅包含 LUT 处理后的图像的覆盖层（不再绘制原始相机预览）
     Widget lutOverlay = Stack(
       children: [
         if (_processedFrame != null)
@@ -304,33 +288,22 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
               image: _processedFrame!,
               imageWidth: _frameW,
               imageHeight: _frameH,
-              cameraController: widget.cameraController,
-              isRearCamera: widget.isRearCamera,
             ),
           ),
         _buildLutOverlayInfo(),
       ],
     );
-    
-    // 组合预览和覆盖层
-    preview = Stack(
-      children: [
-        preview,
-        lutOverlay,
-      ],
-    );
-    
     // 如果有子组件（用于手势检测等），则包装它
     if (widget.child != null) {
-      return Stack(
-        children: [
-          preview,
-          widget.child!,
-        ],
-      );
+      lutOverlay = Stack(children: [lutOverlay, widget.child!]);
     }
-    
-    return preview;
+
+    // 锁定画幅：固定 4:3，不进行旋转或裁切
+    const ar = 4 / 3;
+    return AspectRatio(
+      aspectRatio: ar,
+      child: lutOverlay,
+    );
   }
 
   Widget _buildLutOverlayInfo() {
@@ -357,7 +330,7 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              const Icon(
                 Icons.filter,
                 color: Colors.blue,
                 size: 16,
@@ -407,31 +380,22 @@ class _SimpleLutPreviewState extends State<SimpleLutPreview> {
   }
 }
 
-/// Paint the processed low-res frame scaled to fill while preserving aspect.
 class _ProcessedPreviewImage extends StatelessWidget {
   final ui.Image image;
   final int imageWidth;
   final int imageHeight;
-  final CameraController cameraController;
-  final bool isRearCamera;
 
   const _ProcessedPreviewImage({
     Key? key,
     required this.image,
     required this.imageWidth,
     required this.imageHeight,
-    required this.cameraController,
-    required this.isRearCamera,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _ProcessedFramePainter(
-        image, 
-        cameraController, 
-        isRearCamera
-      ),
+      painter: _ProcessedFramePainter(image: image),
       isComplex: true,
       willChange: true,
     );
@@ -440,102 +404,34 @@ class _ProcessedPreviewImage extends StatelessWidget {
 
 class _ProcessedFramePainter extends CustomPainter {
   final ui.Image image;
-  final CameraController cameraController;
-  final bool isRearCamera;
-  
-  _ProcessedFramePainter(this.image, this.cameraController, this.isRearCamera);
+  _ProcessedFramePainter({required this.image});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final srcW = image.width.toDouble();
-    final srcH = image.height.toDouble();
-    final dstW = size.width;
-    final dstH = size.height;
+    final iw = image.width.toDouble();
+    final ih = image.height.toDouble();
+    final dw = size.width;
+    final dh = size.height;
 
-    // 保存画布状态
-    canvas.save();
+    // Contain-fit: 不裁切，只缩放以完整显示
+    final sx = dw / iw;
+    final sy = dh / ih;
+    final s = sx < sy ? sx : sy;
+    final drawW = iw * s;
+    final drawH = ih * s;
 
-    // 获取设备方向
-    final deviceOrientation = cameraController.value.deviceOrientation;
-    
-    // 计算旋转角度和镜像
-    double rotationAngle = 0.0;
-    bool needsHorizontalFlip = false;
-    bool needsVerticalFlip = false;
-
-    // 根据设备方向确定旋转角度
-    switch (deviceOrientation) {
-      case DeviceOrientation.portraitUp:
-        rotationAngle = 0.0;
-        break;
-      case DeviceOrientation.landscapeLeft:
-        rotationAngle = -90.0;
-        break;
-      case DeviceOrientation.portraitDown:
-        rotationAngle = 180.0;
-        break;
-      case DeviceOrientation.landscapeRight:
-        rotationAngle = 90.0;
-        break;
-    }
-
-    // 前置摄像头需要水平镜像
-    if (!isRearCamera) {
-      needsHorizontalFlip = true;
-    }
-
-    // 应用变换
-    final centerX = dstW / 2;
-    final centerY = dstH / 2;
-
-    // 移动到中心点
-    canvas.translate(centerX, centerY);
-
-    // 应用旋转
-    if (rotationAngle != 0.0) {
-      canvas.rotate(rotationAngle * 3.14159 / 180.0);
-    }
-
-    // 应用镜像
-    if (needsHorizontalFlip || needsVerticalFlip) {
-      canvas.scale(
-        needsHorizontalFlip ? -1.0 : 1.0,
-        needsVerticalFlip ? -1.0 : 1.0,
-      );
-    }
-
-    // 移回原点
-    canvas.translate(-centerX, -centerY);
-
-    // Cover fit with aspect ratio preserved
-    final srcAspect = srcW / srcH;
-    final dstAspect = dstW / dstH;
-    Rect srcRect;
-    if (dstAspect > srcAspect) {
-      // crop height
-      final drawH = srcW / dstAspect;
-      final top = (srcH - drawH) / 2.0;
-      srcRect = Rect.fromLTWH(0, top, srcW, drawH);
-    } else {
-      // crop width
-      final drawW = srcH * dstAspect;
-      final left = (srcW - drawW) / 2.0;
-      srcRect = Rect.fromLTWH(left, 0, drawW, srcH);
-    }
-    final dstRect = Rect.fromLTWH(0, 0, dstW, dstH);
+    final dx = (dw - drawW) / 2;
+    final dy = (dh - drawH) / 2;
 
     final paint = Paint();
+    final srcRect = Rect.fromLTWH(0, 0, iw, ih);
+    final dstRect = Rect.fromLTWH(dx, dy, drawW, drawH);
     canvas.drawImageRect(image, srcRect, dstRect, paint);
 
-    // 恢复画布状态
-    canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant _ProcessedFramePainter oldDelegate) {
-    return oldDelegate.image != image ||
-           oldDelegate.cameraController.value.deviceOrientation != 
-           cameraController.value.deviceOrientation ||
-           oldDelegate.isRearCamera != isRearCamera;
+    return oldDelegate.image != image;
   }
 }

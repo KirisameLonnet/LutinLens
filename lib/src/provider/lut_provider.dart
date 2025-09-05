@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:librecamera/src/utils/lut_manager.dart';
 import 'package:librecamera/src/lut/lut_preview_manager.dart';
 import 'package:librecamera/src/utils/preferences.dart';
-import 'dart:typed_data';
 
 /// LUT状态管理Provider
 class LutProvider extends ChangeNotifier {
@@ -76,7 +75,7 @@ class LutProvider extends ChangeNotifier {
         // 持久化选择状态
         await _saveSelectedLut(lut);
       } catch (e) {
-        print('更新LUT预览失败: $e');
+        debugPrint('更新LUT预览失败: $e');
         // 即使出错也要尝试恢复图像流
         LutPreviewManager.instance.resumeImageStream();
       }
@@ -91,7 +90,7 @@ class LutProvider extends ChangeNotifier {
     if (lut != null) {
       await selectLut(lut);
     } else {
-      print('警告: 找不到名为 "$lutName" 的LUT');
+      debugPrint('警告: 找不到名为 "$lutName" 的LUT');
     }
   }
 
@@ -272,7 +271,7 @@ class LutProvider extends ChangeNotifier {
       await Preferences.setSelectedLutName(lut.name);
       await Preferences.setSelectedLutPath(lut.path);
     } catch (e) {
-      print('保存LUT选择失败: $e');
+      debugPrint('保存LUT选择失败: $e');
     }
   }
 
@@ -304,7 +303,7 @@ class LutProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('恢复LUT选择失败: $e');
+      debugPrint('恢复LUT选择失败: $e');
     }
   }
 
@@ -327,7 +326,7 @@ class LutProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('处理摄像头控制器变化时出错: $e');
+      debugPrint('处理摄像头控制器变化时出错: $e');
     }
   }
 }

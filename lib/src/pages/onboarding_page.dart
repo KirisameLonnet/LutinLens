@@ -53,12 +53,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     var status = await Permission.camera.status;
 
     if (status.isGranted) {
-      print('Camera Permission: GRANTED');
+      debugPrint('Camera Permission: GRANTED');
       setState(() {
         cameraPermissionGranted = true;
       });
     } else {
-      print('Camera Permission: DENIED');
+      debugPrint('Camera Permission: DENIED');
     }
   }
 
@@ -67,12 +67,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     var status = await Permission.storage.status;
 
     if (status.isGranted) {
-      print('Storage Permission: GRANTED');
+      debugPrint('Storage Permission: GRANTED');
       setState(() {
         storagePermissionGranted = true;
       });
     } else {
-      print('Storage: DENIED');
+      debugPrint('Storage: DENIED');
     }
   }
 

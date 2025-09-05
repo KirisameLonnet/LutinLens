@@ -8,7 +8,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../l10n/app_localizations.dart';
 import 'package:librecamera/src/provider/locale_provider.dart';
 import 'package:librecamera/src/provider/theme_provider.dart';
-import 'package:librecamera/src/provider/lut_provider.dart';
 import 'package:provider/provider.dart';
 
 const defaultThemeColour = Color(0xFF1E88E5);
@@ -27,7 +26,7 @@ class CameraApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (context) => LocaleProvider()),
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
-        ChangeNotifierProvider(create: (context) => LutProvider()),
+        // 已移除：LutProvider（后续重构）
       ],
       //create: (context) => LocaleProvider(),
       builder: ((context, child) {
