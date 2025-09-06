@@ -196,6 +196,8 @@ class _CameraPageState extends State<CameraPage>
 
   void _stopVolumeButtons() => volumeSubscription?.cancel();
 
+  void _startVolumeButtons() => checkVolumeButtons();
+  
   void checkVolumeButtons() => Preferences.getCaptureAtVolumePress()
       ? _subscribeVolumeButtons()
       : _stopVolumeButtons();
@@ -232,34 +234,58 @@ class _CameraPageState extends State<CameraPage>
   Widget _cameraPreview(context) {
     return Container(
       color: Colors.black,
-      child: Stack(
+      child: Row(
         children: [
-          /*qr.QRView(
-            key: qrKey,
-            onQRViewCreated: _onQRViewCreated,
-          ),*/
-          _previewWidget(),
-          _shutterBorder(),
-          //?TODO when in QR-Code mode: enable, _previewWidget disable
-          /*Center(
-            child: (result != null)
-                ? Container(
-                    color: Colors.black54,
-                    height: 200,
-                    padding: const EdgeInsets.all(8.0),
-                    child: SelectableText('Link: ${result!.code}',
-                        style: const TextStyle(color: Colors.white)),
-                  )
-                : const Text('Scan a code',
-                    style: TextStyle(color: Colors.white)),
-          ),*/
-          _timerWidget(),
-          _topControlsWidget(),
-          _zoomWidget(context),
-          _bottomControlsWidget(),
-          _circleWidget(),
-          if (Preferences.getAiSuggestionEnabled()) _aiSuggestionWidget(),
-          // 已移除：旧的 LUT 弹层组件
+          // 左侧控制栏
+          _leftControlBar(),
+          
+          // 中央相机预览区域
+          Expanded(
+            child: Stack(
+              children: [
+                // 全屏相机预览
+                Positioned.fill(child: _previewWidget()),
+                
+                // 拍照时的白边效果
+                _shutterBorder(),
+                
+                // 计时器显示（居中）
+                _timerWidget(),
+                
+                // 对焦圈
+                _circleWidget(),
+                
+                // 顶部模式切换（如果启用）
+                if (Preferences.getEnableModeRow())
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: _buildModeSelector(),
+                  ),
+                
+                // 底部曝光滑块（如果启用）
+                if (Preferences.getEnableExposureSlider())
+                  Positioned(
+                    bottom: 16,
+                    left: 32,
+                    right: 32,
+                    child: ExposureSlider(
+                      setExposureOffset: _setExposureOffset,
+                      currentExposureOffset: _currentExposureOffset,
+                      minAvailableExposureOffset: _minAvailableExposureOffset,
+                      maxAvailableExposureOffset: _maxAvailableExposureOffset,
+                    ),
+                  ),
+                
+                // AI建议组件（如果启用）
+                if (Preferences.getAiSuggestionEnabled()) _aiSuggestionWidget(),
+              ],
+            ),
+          ),
+          
+          // 右侧控制栏
+          _rightControlBar(),
         ],
       ),
     );
@@ -356,6 +382,240 @@ class _CameraPageState extends State<CameraPage>
     } else {
       return const Center(child: CircularProgressIndicator());
     }
+  }
+
+  // 左侧控制栏（横屏模式）- 空白区域
+  Widget _leftControlBar() {
+    return Container(
+      width: 0,  // 设置为0宽度，实际不显示
+      child: const SizedBox.shrink(),  // 空组件
+    );
+  }
+
+  // 右侧控制栏（横屏模式）- 设置、快门键、闪光灯、缩放滑杆
+  Widget _rightControlBar() {
+    return Container(
+      width: 80,
+      color: Colors.black.withOpacity(0.3),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          // 设置按钮（顶部）
+          _buildVerticalControlButton(
+            icon: Icons.settings_outlined,
+            onTap: _timerStopwatch.elapsedTicks <= 1 
+              ? () => _navigateToSettings() 
+              : null,
+          ),
+          
+          // 拍照按钮（中间）
+          _buildMainShutterButton(),
+          
+          // 闪光灯按钮
+          FlashModeWidget(
+            controller: controller,
+            isRearCameraSelected: isRearCameraSelected,
+            isVideoCameraSelected: false,
+          ),
+          
+          // 缩放滑块（底部）- 水平显示
+          if (Preferences.getEnableZoomSlider())
+            SizedBox(
+              height: 80,
+              child: _zoomSlider(update: false),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerticalControlButton({
+    required IconData icon,
+    VoidCallback? onTap,
+    bool isActive = false,
+  }) {
+    return Container(
+      width: 48,
+      height: 48,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive 
+          ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
+          : Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Icon(
+            icon,
+            color: onTap != null ? Colors.white : Colors.white54,
+            size: 24,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 垂直的LUT控制组件 - 减小高度适应分布式布局
+  Widget _buildVerticalLutControl() {
+    return Container(
+      height: 60,  // 从100减小到60避免溢出
+      child: LutControlWidget(),
+    );
+  }
+
+  void _navigateToSettings() {
+    _stopVolumeButtons();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SettingsPage(
+          controller: controller,
+          onNewCameraSelected: _initializeCameraController,
+        ),
+      ),
+    ).then((_) => _startVolumeButtons());
+  }
+
+  Widget _buildModeSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ExposureModeControlWidget(controller: controller),
+          const SizedBox(width: 16),
+          FocusModeControlWidget(controller: controller),
+          const SizedBox(width: 16),
+          const LutControlWidget(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThumbnailWidget() {
+    return _timerStopwatch.elapsedTicks > 1
+        ? Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          )
+        : Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: capturedFile != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () async {
+                          DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+                          AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+                          int sdkInt = androidInfo.version.sdkInt;
+
+                          const String mimeType = 'image/jpeg';
+                          final methodChannel = AndroidMethodChannel();
+                          await methodChannel.openItem(
+                            file: capturedFile!,
+                            mimeType: mimeType,
+                            openInGallery: sdkInt > 27 ? false : true,
+                          );
+                        },
+                        child: _thumbnailWidget(),
+                      ),
+                    ),
+                  )
+                : Icon(
+                    Icons.photo_library_outlined,
+                    color: Colors.white.withOpacity(0.7),
+                    size: 24,
+                  ),
+          );
+  }
+
+  Widget _buildMainShutterButton() {
+    return GestureDetector(
+      onTap: onTakePictureButtonPressed,
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          border: Border.all(
+            color: Colors.white,
+            width: 4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Container(
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: takingPicture ? Colors.red : Colors.white,
+            border: Border.all(
+              color: Colors.grey.shade300,
+              width: 2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCameraSwitchButton() {
+    return GestureDetector(
+      onTap: () {
+        onNewCameraSelected(
+            cameras[isRearCameraSelected ? 1 : 0]);
+        setIsRearCameraSelected();
+      },
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withOpacity(0.5),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Icon(
+          isRearCameraSelected 
+            ? Icons.camera_front_outlined 
+            : Icons.camera_rear_outlined,
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
+    );
   }
 
   Widget _topControlsWidget() {

@@ -109,39 +109,78 @@ class LutManager {
   /// 从 AssetManifest 中枚举所有 assets/Luts/ 下的 .cube 文件，提取 LUT 名称
   static Future<List<String>> _discoverAssetLutNames() async {
     try {
-      debugPrint('[LUT] 读取 AssetManifest.json...');
-      final String manifestJson = await rootBundle.loadString('AssetManifest.json');
-      final Map<String, dynamic> manifestMap = json.decode(manifestJson) as Map<String, dynamic>;
+      debugPrint('[LUT] 读取 AssetManifest...');
+      
+      // 尝试新版本的 AssetManifest.bin 格式
+      try {
+        final ByteData manifestData = await rootBundle.load('AssetManifest.bin');
+        final manifestMap = const StandardMessageCodec().decodeMessage(manifestData) as Map<Object?, Object?>;
+        
+        final related = manifestMap.keys
+            .cast<String>()
+            .where((k) => k.startsWith(_defaultLutPath))
+            .toList()
+          ..sort();
+        debugPrint('[LUT] AssetManifest.bin 中与 LUT 相关的条目共 ${related.length} 个');
+        for (final k in related) {
+          debugPrint('[LUT] manifest: $k');
+        }
 
-      // 打印与 LUT 相关的清单条目，辅助排错
-      final related = manifestMap.keys
-          .where((k) => k.startsWith(_defaultLutPath))
-          .toList()
-        ..sort();
-      debugPrint('[LUT] AssetManifest 中与 LUT 相关的条目共 ${related.length} 个');
-      for (final k in related) {
-        debugPrint('[LUT] manifest: $k');
-      }
-
-      final Set<String> names = {};
-      for (final String assetPath in manifestMap.keys) {
-        // 形如: assets/Luts/<NAME>/<FILE>.cube
-        if (assetPath.startsWith(_defaultLutPath) && assetPath.endsWith('.cube')) {
-          final parts = assetPath.split('/');
-          // 优先使用目录名作为 LUT 名，避免文件名不一致导致丢失
-          if (parts.length >= 3) {
-            final dirName = parts[2];
-            names.add(dirName);
-          } else {
-            final fileName = parts.last; // <FILE>.cube
-            final name = fileName.replaceAll('.cube', '');
-            names.add(name);
+        final Set<String> names = {};
+        for (final String assetPath in manifestMap.keys.cast<String>()) {
+          // 形如: assets/Luts/<NAME>/<FILE>.cube
+          if (assetPath.startsWith(_defaultLutPath) && assetPath.endsWith('.cube')) {
+            final parts = assetPath.split('/');
+            // 优先使用目录名作为 LUT 名，避免文件名不一致导致丢失
+            if (parts.length >= 3) {
+              final dirName = parts[2];
+              names.add(dirName);
+            } else {
+              final fileName = parts.last; // <FILE>.cube
+              final name = fileName.replaceAll('.cube', '');
+              names.add(name);
+            }
           }
         }
+        final list = names.toList()..sort();
+        debugPrint('[LUT] 在 assets 中发现默认LUT 名称: $list');
+        return list;
+      } catch (binError) {
+        debugPrint('[LUT] AssetManifest.bin 读取失败，尝试 JSON 格式: $binError');
+        
+        // 回退到旧版本的 JSON 格式
+        final String manifestJson = await rootBundle.loadString('AssetManifest.json');
+        final Map<String, dynamic> manifestMap = json.decode(manifestJson) as Map<String, dynamic>;
+
+        final related = manifestMap.keys
+            .where((k) => k.startsWith(_defaultLutPath))
+            .toList()
+          ..sort();
+        debugPrint('[LUT] AssetManifest.json 中与 LUT 相关的条目共 ${related.length} 个');
+        for (final k in related) {
+          debugPrint('[LUT] manifest: $k');
+        }
+
+        final Set<String> names = {};
+        for (final String assetPath in manifestMap.keys) {
+          // 形如: assets/Luts/<NAME>/<FILE>.cube
+          if (assetPath.startsWith(_defaultLutPath) && assetPath.endsWith('.cube')) {
+            final parts = assetPath.split('/');
+            // 优先使用目录名作为 LUT 名，避免文件名不一致导致丢失
+            if (parts.length >= 3) {
+              final dirName = parts[2];
+              names.add(dirName);
+            } else {
+              final fileName = parts.last; // <FILE>.cube
+              final name = fileName.replaceAll('.cube', '');
+              names.add(name);
+            }
+          }
+        }
+        final list = names.toList()..sort();
+        debugPrint('[LUT] 在 assets 中发现默认LUT 名称: $list');
+        return list;
       }
-      final list = names.toList()..sort();
-      debugPrint('[LUT] 在 assets 中发现默认LUT 名称: $list');
-      return list;
     } catch (e) {
       debugPrint('[LUT][ERR] 读取 AssetManifest 失败，回退为空: $e');
       return [];

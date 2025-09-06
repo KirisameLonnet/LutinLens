@@ -21,8 +21,55 @@ class ThemeProvider extends ChangeNotifier {
               .copyWith(surface: Colors.black)
               .harmonized()
           : colorScheme,
-      useMaterial3: Preferences.getUseMaterial3(),
+      useMaterial3: true, // 强制启用Material 3
       scaffoldBackgroundColor: isBlack ? Colors.black : null,
+      // 添加Material 3专用配置
+      appBarTheme: AppBarTheme(
+        centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 3,
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
+      ),
+      // Flutter 3.22+ expects CardThemeData here
+      cardTheme: CardThemeData(
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: SegmentedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 64,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        elevation: 3,
+        highlightElevation: 6,
+      ),
     );
   }
 

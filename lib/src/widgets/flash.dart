@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:librecamera/src/utils/preferences.dart';
 import '../../l10n/app_localizations.dart';
+import 'package:librecamera/src/utils/color_compat.dart';
 
 class FlashModeWidget extends StatefulWidget {
   const FlashModeWidget({
@@ -72,40 +73,41 @@ class _FlashModeWidgetState extends State<FlashModeWidget> {
       }
     }
 
-    return AnimatedRotation(
-      duration: const Duration(milliseconds: 400),
-      turns:
-          MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        onPressed: widget.isRearCameraSelected
-            ? (() {
-                _toggleFlashMode();
-              })
-            : null,
-        disabledColor: Colors.white24,
-        color: Colors.white,
-        iconSize: 60,
-        icon: Stack(
-          alignment: Alignment.center,
-          children: [
-            /*const Icon(
-                    Icons.circle,
-                    color: Colors.black38,
-                    size: 60,
-                  ),*/
-            Icon(
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: widget.isRearCameraSelected ? _toggleFlashMode : null,
+          child: Container(
+            decoration: const BoxDecoration(shape: BoxShape.circle),
+            child: Icon(
               _getFlashlightIcon(
                   flashMode: widget.controller != null
                       ? widget.controller!.value.isInitialized
                           ? widget.controller!.value.flashMode
                           : getFlashMode()
                       : FlashMode.off),
-              size: 30,
+              size: 24,
+              color: widget.isRearCameraSelected 
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
             ),
-          ],
+          ),
         ),
-        tooltip: AppLocalizations.of(context)!.flashlight,
       ),
     );
   }

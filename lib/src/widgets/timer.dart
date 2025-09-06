@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:librecamera/src/utils/preferences.dart';
 import '../../l10n/app_localizations.dart';
+import 'package:librecamera/src/utils/color_compat.dart';
 
 class TimerButton extends StatefulWidget {
   const TimerButton({
@@ -30,14 +31,22 @@ class _TimerButtonState extends State<TimerButton> {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: AppLocalizations.of(context)!.timer,
-      child: DropdownButton(
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+      ),
+      child: DropdownButton<Duration>(
         isDense: true,
         menuMaxHeight: 384.0,
-        icon: const Icon(Icons.av_timer),
-        iconEnabledColor: Colors.white,
+        icon: const Icon(Icons.av_timer_outlined),
+        underline: Container(),
+        borderRadius: BorderRadius.circular(12),
         value: Duration(seconds: Preferences.getTimerDuration()),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontSize: 14,
+        ),
         selectedItemBuilder: (context) {
           return durations.map(
             (duration) {
@@ -46,10 +55,29 @@ class _TimerButtonState extends State<TimerButton> {
                   : '${duration.inMinutes}m';
 
               return DropdownMenuItem(
-                child: Text(
-                  name,
-                  style: TextStyle(
-                      color: widget.enabled ? Colors.white : Colors.white24),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.av_timer_outlined,
+                        size: 18,
+                        color: widget.enabled 
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        name,
+                        style: TextStyle(
+                          color: widget.enabled 
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -57,10 +85,29 @@ class _TimerButtonState extends State<TimerButton> {
             ..insert(
               0,
               DropdownMenuItem<Duration>(
-                child: Text(
-                  '––',
-                  style: TextStyle(
-                      color: widget.enabled ? Colors.white : Colors.white24),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.av_timer_outlined,
+                        size: 18,
+                        color: widget.enabled 
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '––',
+                        style: TextStyle(
+                          color: widget.enabled 
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -80,7 +127,9 @@ class _TimerButtonState extends State<TimerButton> {
               },
               child: Text(
                 name,
-                style: const TextStyle(color: Colors.blue),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             );
           },
@@ -96,12 +145,13 @@ class _TimerButtonState extends State<TimerButton> {
               },
               child: Text(
                 AppLocalizations.of(context)!.off,
-                style: const TextStyle(color: Colors.blue),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ),
           ),
         onChanged: widget.enabled ? (_) {} : null,
-        iconDisabledColor: Colors.white24,
       ),
     );
   }

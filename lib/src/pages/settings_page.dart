@@ -14,6 +14,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:librecamera/src/utils/color_compat.dart';
 
 class SettingsButton extends StatelessWidget {
   const SettingsButton({
@@ -119,6 +120,7 @@ class _SettingsPageState extends State<SettingsPage> {
           decoration: const InputDecoration(
             hintText: '例如：https://ai.example.com 或 192.168.1.100:8080',
             labelText: '服务器地址',
+            border: OutlineInputBorder(),
           ),
           keyboardType: TextInputType.url,
         ),
@@ -127,7 +129,7 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('取消'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () async {
               String url = controller.text.trim();
               if (url.isNotEmpty && !url.startsWith('http')) {
@@ -627,62 +629,152 @@ class _SettingsPageState extends State<SettingsPage> {
             tooltip: AppLocalizations.of(context)!.back,
           ),
           title: Text(AppLocalizations.of(context)!.settings),
+          scrolledUnderElevation: 2,
         ),
         body: ListView(
           controller: listScrollController,
-          padding: const EdgeInsets.fromLTRB(0, 8.0, 0, 8.0),
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
           children: <Widget>[
-            _headingTile(AppLocalizations.of(context)!.appSettings),
-            _languageTile(),
-            const Divider(),
-            _themeTile(),
-            const Divider(),
-            _maximumScreenBrightnessTile(),
-            const Divider(),
-            _leftHandedModeTile(),
-            const Divider(),
-            _enableModeRow(),
-            const Divider(),
-            _enableZoomSliderTile(),
-            const Divider(),
-            _enableExposureSliderTile(),
-            const Divider(),
-            // 已移除：LUT 设置入口
-            _headingTile(AppLocalizations.of(context)!.cameraBehaviour),
-            _resolutionTile(),
-            const Divider(),
-            _captureAtVolumePressTile(),
-            const Divider(),
-            _disableShutterSoundTile(),
-            const Divider(),
-            _startWithFrontCameraTile(),
-            const Divider(),
-            _disableAudioTile(),
-            const Divider(),
-            _headingTile(AppLocalizations.of(context)!.saving),
-            _flipPhotosFrontCameraTile(),
-            const Divider(),
-            // 已移除：图片格式切换（固定 JPEG）
-            _imageCompressionTile(),
-            const Divider(),
-            _keepEXIFMetadataTile(),
-            const Divider(),
-            _savePathTile(),
-            const Divider(),
-            _headingTile('AI设置'),
-            _aiSuggestionEnabledTile(),
-            const Divider(),
-            _aiTestModeTile(),
-            const Divider(),
-            _aiServerUrlTile(),
-            const Divider(),
-            _showMoreTile(),
-            if (isMoreOptions) _moreTile(),
+            // 应用设置卡片
+            _buildSettingsCard(
+              title: AppLocalizations.of(context)!.appSettings,
+              children: [
+                _languageTile(),
+                _themeTile(),
+                _maximumScreenBrightnessTile(),
+                _leftHandedModeTile(),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // UI设置卡片
+            _buildSettingsCard(
+              title: '界面设置',
+              children: [
+                _enableModeRow(),
+                _enableZoomSliderTile(),
+                _enableExposureSliderTile(),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // 相机行为设置卡片
+            _buildSettingsCard(
+              title: AppLocalizations.of(context)!.cameraBehaviour,
+              children: [
+                _resolutionTile(),
+                _captureAtVolumePressTile(),
+                _disableShutterSoundTile(),
+                _startWithFrontCameraTile(),
+                _disableAudioTile(),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // 保存设置卡片
+            _buildSettingsCard(
+              title: AppLocalizations.of(context)!.saving,
+              children: [
+                _flipPhotosFrontCameraTile(),
+                _imageCompressionTile(),
+                _keepEXIFMetadataTile(),
+                _savePathTile(),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // AI设置卡片
+            _buildSettingsCard(
+              title: 'AI设置',
+              children: [
+                _aiSuggestionEnabledTile(),
+                _aiTestModeTile(),
+                _aiServerUrlTile(),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // 更多设置卡片
+            _buildSettingsCard(
+              title: '更多设置',
+              children: [
+                _showMoreTile(),
+                if (isMoreOptions) ..._buildMoreOptions(),
+              ],
+            ),
+
+            const SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
-  // 已移除：LUT 设置入口
+  Widget _buildSettingsCard({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ...children.map((child) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: child,
+          )),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildMoreOptions() {
+    return [
+      _captureOrientationLockedTile(),
+      _showNavigationBarTile(),
+      _onboardingScreenTile(),
+      _buildGitHubTile(),
+      _aboutTile(),
+    ];
+  }
+
+  Widget _buildGitHubTile() {
+    void launchGitHubURL() async {
+      var url = Uri.parse('https://github.com/iakmds/librecamera');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    }
+
+    return ListTile(
+      leading: const Icon(Icons.code),
+      title: const Text('GitHub'),
+      subtitle: const Text('查看源代码'),
+      trailing: const Icon(Icons.open_in_new),
+      onTap: launchGitHubURL,
+    );
+  }
 }

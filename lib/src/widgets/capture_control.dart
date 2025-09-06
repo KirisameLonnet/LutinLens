@@ -3,6 +3,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import 'package:librecamera/main.dart';
+import 'package:librecamera/src/utils/color_compat.dart';
 
 class CaptureControlWidget extends StatefulWidget {
   const CaptureControlWidget({
@@ -48,105 +49,109 @@ class _CaptureControlWidgetState extends State<CaptureControlWidget>
   }
 
   Widget captureButton() {
-    return AnimatedRotation(
-      duration: const Duration(milliseconds: 400),
-      turns:
-          MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        onPressed: () => widget.onTakePictureButtonPressed(),
-        icon: Stack(
-          alignment: Alignment.center,
-          children: [
-            const Icon(
-              Icons.circle,
-              color: Colors.white38,
-              size: 80,
-            ),
-            const Icon(
-              Icons.circle,
-              color: Colors.white,
-              size: 65,
-            ),
-            Icon(
-              Icons.camera_alt,
-              color: Colors.grey.shade800,
-              size: 32,
-            ),
-          ],
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary,
+          width: 4,
         ),
-        tooltip: AppLocalizations.of(context)!.takePicture,
-        iconSize: 80,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(36),
+          onTap: () => widget.onTakePictureButtonPressed(),
+          child: Container(
+            decoration: const BoxDecoration(shape: BoxShape.circle),
+            child: Icon(
+              Icons.camera_alt,
+              color: Theme.of(context).colorScheme.primary,
+              size: 28,
+            ),
+          ),
+        ),
       ),
     );
   }
 
   Widget switchButton() {
-    return AnimatedRotation(
-      duration: const Duration(milliseconds: 400),
-      turns:
-          MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        onPressed: () {
-          widget.onNewCameraSelected(
-              cameras[widget.isRearCameraSelected ? 1 : 0]);
-          widget.setIsRearCameraSelected();
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            widget.onNewCameraSelected(
+                cameras[widget.isRearCameraSelected ? 1 : 0]);
+            widget.setIsRearCameraSelected();
 
-          animationController.reset();
-          animationController.forward();
-        },
-        icon: Stack(
-          alignment: Alignment.center,
-          children: [
-            const Icon(
-              Icons.circle,
-              color: Colors.black38,
-              size: 60,
-            ),
-            AnimatedBuilder(
-              animation: animationController,
-              builder: (context, child) {
-                return Transform(
-                  alignment: Alignment.center,
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, 0.001)
-                    ..rotateY(animationController.value * 6),
-                  child: child,
-                );
-              },
-              child: Icon(
-                widget.isRearCameraSelected
-                    ? Icons.camera_front
-                    : Icons.camera_rear,
-                color: Colors.white,
-                size: 30,
-              ),
-            ),
-          ],
+            animationController.reset();
+            animationController.forward();
+          },
+          child: AnimatedBuilder(
+            animation: animationController,
+            builder: (context, child) {
+              return Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateY(animationController.value * 6),
+                child: Icon(
+                  widget.isRearCameraSelected
+                      ? Icons.camera_front_outlined
+                      : Icons.camera_rear_outlined,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  size: 24,
+                ),
+              );
+            },
+          ),
         ),
-        tooltip: widget.isRearCameraSelected
-            ? AppLocalizations.of(context)!.flipToFrontCamera
-            : AppLocalizations.of(context)!.flipToRearCamera,
-        iconSize: 60,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        widget.leadingWidget,
-        captureButton(),
-        FutureBuilder(
-          future: deviceInfo.androidInfo,
-          builder: (context, snapshot) {
-            return switchButton();
-          },
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          widget.leadingWidget,
+          captureButton(),
+          FutureBuilder(
+            future: deviceInfo.androidInfo,
+            builder: (context, snapshot) {
+              return switchButton();
+            },
+          ),
+        ],
+      ),
     );
   }
 }

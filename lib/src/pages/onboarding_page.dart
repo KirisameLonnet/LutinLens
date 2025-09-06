@@ -6,6 +6,7 @@ import 'package:librecamera/src/utils/preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:librecamera/src/utils/color_compat.dart';
 
 import '../../l10n/app_localizations.dart';
 
@@ -416,34 +417,52 @@ class _OnboardingPageState extends State<OnboardingPage> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (details) => unfocusAndRestore(),
-      child: Theme(
-        data: context.watch<ThemeProvider>().theme(
-            colorScheme: ColorScheme.fromSeed(seedColor: defaultThemeColour)),
-        child: Scaffold(
-          body: Container(
-            padding: const EdgeInsets.only(bottom: 80.0),
-            child: PageView(
-              physics: nextEnabled()
-                  ? const ScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
-              controller: controller,
-              onPageChanged: (index) {
-                setState(() {
-                  isLastPage = index == 2;
-                  currentPage = index;
-
-                  unfocusAndRestore();
-                });
-              },
-              children: [
-                _permissionsPage(),
-                _savePathPage(),
-                _welcomePageInfo(),
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        body: Container(
+          padding: const EdgeInsets.only(bottom: 80.0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1),
+                Theme.of(context).colorScheme.surface,
               ],
             ),
           ),
-          bottomSheet:
-              isLastPage ? _welcomePageBottomButton() : _bottomPageIndicator(),
+          child: PageView(
+            physics: nextEnabled()
+                ? const ScrollPhysics()
+                : const NeverScrollableScrollPhysics(),
+            controller: controller,
+            onPageChanged: (index) {
+              setState(() {
+                isLastPage = index == 2;
+                currentPage = index;
+
+                unfocusAndRestore();
+              });
+            },
+            children: [
+              _permissionsPage(),
+              _savePathPage(),
+              _welcomePageInfo(),
+            ],
+          ),
+        ),
+        bottomSheet: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: isLastPage ? _welcomePageBottomButton() : _bottomPageIndicator(),
         ),
       ),
     );
