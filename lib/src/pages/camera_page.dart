@@ -27,6 +27,7 @@ import 'package:librecamera/src/widgets/capture_control.dart';
 import 'package:librecamera/src/lut/lut_preview_manager.dart';
 import 'package:librecamera/src/lut/cube_loader.dart';
 import 'package:librecamera/src/lut/software_lut_processor.dart';
+import 'package:librecamera/src/lut/gpu_lut_still_renderer.dart';
 import 'package:librecamera/src/widgets/lut_controls.dart';
 
 /// Camera example home widget.
@@ -741,17 +742,29 @@ class _CameraPageState extends State<CameraPage>
       try {
         final manager = LutPreviewManager.instance;
         if (manager.isEnabled && manager.mixStrength > 0.0 && manager.currentLutPath != null) {
-          // 读取当前文件并应用 LUT，再按目标格式编码
+          // 读取当前文件并应用 LUT（优先 GPU 全分辨率渲染，失败则回退到软件）
           final srcBytes = await capturedFile!.readAsBytes();
-          newFileBytes = await _applyLutToImageBytes(
-            srcBytes: srcBytes,
-            lutPath: manager.currentLutPath!,
-            mixStrength: manager.mixStrength,
-            format: format,
-            quality: Preferences.getCompressQuality(),
-          );
+          try {
+            newFileBytes = await GpuLutStillRenderer.processJpegWithLut(
+              jpegBytes: srcBytes,
+              lutPath: manager.currentLutPath!,
+              mixStrength: manager.mixStrength,
+              jpegQuality: Preferences.getCompressQuality(),
+            );
+            if (Preferences.getKeepEXIFMetadata()) {
+              newFileBytes = _injectJpegExif(newFileBytes!, srcBytes);
+            }
+          } catch (_) {
+            newFileBytes = await _applyLutToImageBytes(
+              srcBytes: srcBytes,
+              lutPath: manager.currentLutPath!,
+              mixStrength: manager.mixStrength,
+              format: format,
+              quality: Preferences.getCompressQuality(),
+            );
+          }
         } else {
-          // 保持原有压缩路径
+          // 未启用 LUT，按原路径压缩保存
           newFileBytes = await FlutterImageCompress.compressWithFile(
             capturedFile!.path,
             quality: Preferences.getCompressQuality(),
