@@ -93,6 +93,8 @@ class _CameraPageState extends State<CameraPage>
     /*final methodChannel = AndroidMethodChannel();
     methodChannel.disableIntentCamera(disable: true);*/
 
+    // 恢复上游逻辑：订阅设备方向，更新系统首选方向，
+    // 由 CameraPreview 负责预览的旋转与缩放。
     if (!Preferences.getIsCaptureOrientationLocked()) {
       _subscribeOrientationChangeStream();
     }
@@ -322,20 +324,26 @@ class _CameraPageState extends State<CameraPage>
         child: Listener(
           onPointerDown: (_) => _pointers++,
           onPointerUp: (_) => _pointers--,
-          child: LutPreviewManager.instance.createPreviewWidget(
-            cameraController,
-            isRearCamera: isRearCameraSelected,
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onScaleStart: _handleScaleStart,
-                  onScaleUpdate: _handleScaleUpdate,
-                  onTapDown: (TapDownDetails details) =>
-                      _onViewFinderTap(details, constraints),
-                );
-              },
-            ),
+          child: AnimatedBuilder(
+            // Rebuild preview when LUT state changes
+            animation: LutPreviewManager.instance,
+            builder: (context, _) {
+              return LutPreviewManager.instance.createPreviewWidget(
+                cameraController,
+                isRearCamera: isRearCameraSelected,
+                child: LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onScaleStart: _handleScaleStart,
+                      onScaleUpdate: _handleScaleUpdate,
+                      onTapDown: (TapDownDetails details) =>
+                          _onViewFinderTap(details, constraints),
+                    );
+                  },
+                ),
+              );
+            },
           ),
         ),
       );
@@ -571,27 +579,8 @@ class _CameraPageState extends State<CameraPage>
 
   //Selecting camera
   Future<void> onNewCameraSelected(CameraDescription cameraDescription) async {
-    if (controller != null) {
-      // 切换摄像头前先停止图像流
-      await LutPreviewManager.instance.stopImageStream();
-      
-      try {
-        await controller!.setDescription(cameraDescription);
-        
-        // 已移除：LutProvider 摄像头控制器同步（后续重构）
-        
-        // 延迟重新启动图像流，确保摄像头切换完成
-        Future.delayed(const Duration(milliseconds: 300), () {
-          LutPreviewManager.instance.resumeImageStream();
-        });
-      } catch (e) {
-        debugPrint('切换摄像头时出错: $e');
-        // 即使出错也要尝试恢复图像流
-        LutPreviewManager.instance.resumeImageStream();
-      }
-    } else {
-      return _initializeCameraController(cameraDescription);
-    }
+    // 始终通过重新初始化控制器来切换摄像头（相机插件不提供 setDescription）
+    await _initializeCameraController(cameraDescription);
   }
 
   Future<void> _initializeCameraController(
@@ -869,14 +858,17 @@ class _CameraPageState extends State<CameraPage>
     required int quality,
   }) async {
     // 解码图片
-    final img.Image? original = img.decodeImage(srcBytes);
-    if (original == null) return srcBytes;
+    final img.Image? decoded = img.decodeImage(srcBytes);
+    if (decoded == null) return srcBytes;
 
-    final int w = original.width;
-    final int h = original.height;
+    // 修正方向：将 EXIF Orientation 烘焙到像素，避免竖图被逆时针旋转90°
+    final img.Image oriented = img.bakeOrientation(decoded);
+
+    final int w = oriented.width;
+    final int h = oriented.height;
     // 获取 RGBA 像素
     final Uint8List rgba = Uint8List.fromList(
-      original.getBytes(order: img.ChannelOrder.rgba),
+      oriented.getBytes(order: img.ChannelOrder.rgba),
     );
 
     // 载入 LUT

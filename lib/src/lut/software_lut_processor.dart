@@ -12,16 +12,16 @@ class SoftwareLutProcessor {
       : lutSize = lut.size,
         lutData = lut.data;
 
-  /// 应用LUT到RGB像素
+  /// 应用LUT到RGB像素（包含简单的 sRGB ⇄ 线性 颜色管线）
   List<int> applyLutToRgb(int r, int g, int b, double mixStrength) {
     if (mixStrength <= 0.0) {
       return [r, g, b];
     }
 
-    // 归一化RGB值到0-1范围
-    final rNorm = r / 255.0;
-    final gNorm = g / 255.0;
-    final bNorm = b / 255.0;
+    // 归一化到 0-1，并从 sRGB 线性化到线性空间
+    final rNorm = _srgbToLinear(r / 255.0);
+    final gNorm = _srgbToLinear(g / 255.0);
+    final bNorm = _srgbToLinear(b / 255.0);
 
     // 计算LUT索引
     final rIndex = (rNorm * (lutSize - 1)).clamp(0.0, lutSize - 1.0);
@@ -31,16 +31,32 @@ class SoftwareLutProcessor {
     // 三线性插值
     final result = _trilinearInterpolation(rIndex, gIndex, bIndex);
 
-    // 应用混合强度
-    final finalR = ((1.0 - mixStrength) * rNorm + mixStrength * result[0]) * 255.0;
-    final finalG = ((1.0 - mixStrength) * gNorm + mixStrength * result[1]) * 255.0;
-    final finalB = ((1.0 - mixStrength) * bNorm + mixStrength * result[2]) * 255.0;
+    // 在线性空间混合，然后转回 sRGB
+    final mixedR = (1.0 - mixStrength) * rNorm + mixStrength * result[0];
+    final mixedG = (1.0 - mixStrength) * gNorm + mixStrength * result[1];
+    final mixedB = (1.0 - mixStrength) * bNorm + mixStrength * result[2];
+
+    final finalR = _linearToSrgb(mixedR) * 255.0;
+    final finalG = _linearToSrgb(mixedG) * 255.0;
+    final finalB = _linearToSrgb(mixedB) * 255.0;
 
     return [
       finalR.clamp(0, 255).round(),
       finalG.clamp(0, 255).round(),
       finalB.clamp(0, 255).round(),
     ];
+  }
+
+  // sRGB -> 线性
+  double _srgbToLinear(double c) {
+    if (c <= 0.04045) return c / 12.92;
+    return math.pow((c + 0.055) / 1.055, 2.4).toDouble();
+  }
+
+  // 线性 -> sRGB
+  double _linearToSrgb(double c) {
+    if (c <= 0.0031308) return 12.92 * c;
+    return 1.055 * math.pow(c, 1.0 / 2.4).toDouble() - 0.055;
   }
 
   /// 三线性插值

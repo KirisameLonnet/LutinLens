@@ -32,7 +32,8 @@
               echo "git clone https://github.com/flutter/flutter.git -b 3.24.0 ~/.flutter-sdk"
               exit 1
             fi
-            
+
+
             export JAVA_HOME=${jdkHome}
             # 使用本地Flutter SDK，它自带Dart，不需要单独的Dart
             export PATH="$JAVA_HOME/bin:$LOCAL_FLUTTER_SDK/bin:$PATH"

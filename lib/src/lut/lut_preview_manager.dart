@@ -1,6 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'simple_lut_preview.dart';
+import 'gpu_lut_preview.dart';
 import '../utils/preferences.dart';
 
 /// LUT实时预览管理器
@@ -21,6 +21,7 @@ class LutPreviewManager extends ChangeNotifier {
   String? get currentLutPath => _currentLutPath;
   double get mixStrength => _mixStrength;
   bool get isEnabled => _isEnabled;
+  // 仅保留 GPU 预览实现
 
   /// 设置当前使用的LUT，并自动启用预览
   Future<void> setCurrentLut(String lutPath) async {
@@ -55,6 +56,8 @@ class LutPreviewManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 移除 CPU 预览切换，始终使用 GPU 实现
+
   /// 获取默认LUT路径（直接使用静态资源）
   Future<String> getDefaultLutPath() async {
     return 'assets/Luts/CINEMATIC_FILM/CINEMATIC_FILM.cube';
@@ -66,19 +69,41 @@ class LutPreviewManager extends ChangeNotifier {
     bool isRearCamera = true,
     Widget? child,
   }) {
+    // 始终使用 CameraPreview 作为基础，LUT 以 overlay 子层叠加，
+    // 确保跟随 CameraPreview 的缩放/旋转逻辑（与上游一致）。
+    Widget overlay;
     if (!_isEnabled || _currentLutPath == null) {
-      debugPrint('[LUT] 预览禁用或无路径，返回原生预览');
-      return CameraPreview(
-        cameraController,
-        child: child,
+      overlay = const SizedBox.shrink();
+    } else {
+      debugPrint('[LUT] Overlay=GPU path=$_currentLutPath strength=$_mixStrength');
+      overlay = GpuLutPreview(
+        cameraController: cameraController,
+        lutPath: _currentLutPath!,
+        mixStrength: _mixStrength,
+        isRearCamera: isRearCamera,
       );
     }
-    debugPrint('[LUT] 使用 SimpleLutPreview: path=$_currentLutPath, strength=$_mixStrength');
-    return SimpleLutPreview(
-      cameraController: cameraController,
-      lutPath: _currentLutPath!,
-      mixStrength: _mixStrength,
-      isRearCamera: isRearCamera,
+
+    // 若启用 LUT：隐藏原生相机画布，仅渲染 LUT 结果，避免双层渲染导致比例不一致
+    if (_isEnabled && _currentLutPath != null) {
+      debugPrint('[LUT] Rendering LUT-only (hide native preview)');
+      // Use CameraValue.aspectRatio to match CameraPreview behavior exactly
+      final aspect = cameraController.value.aspectRatio;
+      return AspectRatio(
+        aspectRatio: aspect,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            overlay,
+            if (child != null) child,
+          ],
+        ),
+      );
+    }
+
+    // 未启用 LUT：渲染原生 CameraPreview（与上游保持一致）
+    return CameraPreview(
+      cameraController,
       child: child,
     );
   }
