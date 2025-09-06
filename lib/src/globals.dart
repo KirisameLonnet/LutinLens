@@ -28,3 +28,10 @@ const String prefSelectedLutName = 'selectedLutName';
 const String prefSelectedLutPath = 'selectedLutPath';
 const String prefLutMixStrength = 'lutMixStrength';
 const String prefLutEnabled = 'lutEnabled';
+
+// AI服务器相关的偏好设置
+const String prefAiServerUrl = 'aiServerUrl';
+const String prefAiSuggestionEnabled = 'aiSuggestionEnabled';
+const String prefAiTestMode = 'aiTestMode';
+const String prefAiWidgetX = 'aiWidgetX';
+const String prefAiWidgetY = 'aiWidgetY';

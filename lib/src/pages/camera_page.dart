@@ -29,6 +29,7 @@ import 'package:librecamera/src/lut/cube_loader.dart';
 import 'package:librecamera/src/lut/software_lut_processor.dart';
 import 'package:librecamera/src/lut/gpu_lut_still_renderer.dart';
 import 'package:librecamera/src/widgets/lut_controls.dart';
+import 'package:librecamera/src/services/ai_suggestion_service.dart';
 
 /// Camera example home widget.
 class CameraPage extends StatefulWidget {
@@ -77,6 +78,13 @@ class _CameraPageState extends State<CameraPage>
 
   //LUT controls 已迁移为顶部模式行中的二级菜单样式
 
+  //AI Suggestion Service
+  final AiSuggestionService _aiService = AiSuggestionService();
+  
+  // AI建议组件的拖拽位置 (默认位置：右下角，向右+向下偏移)
+  double _aiWidgetX = 40.0; // 默认距离左边40px (向右移动)
+  double _aiWidgetY = 40.0; // 默认距离底部40px (向下移动)
+
   //QR Code
   /*final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   qr.Barcode? result;
@@ -97,6 +105,15 @@ class _CameraPageState extends State<CameraPage>
     _initializeLutPreviewManager();
 
     onNewCameraSelected(cameras[Preferences.getStartWithRearCamera() ? 0 : 1]);
+    
+    // 加载AI组件的保存位置
+    _aiWidgetX = Preferences.getAiWidgetX();
+    _aiWidgetY = Preferences.getAiWidgetY();
+    
+    // 启动AI服务（稍后在相机初始化完成后启动）
+    _aiService.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _initializeLutPreviewManager() async {
@@ -136,6 +153,7 @@ class _CameraPageState extends State<CameraPage>
     
     // 停止图像流并处理相机控制器
     LutPreviewManager.instance.stopImageStream();
+    _aiService.stopService();
     controller?.dispose();
     controller = null;
 
@@ -240,6 +258,7 @@ class _CameraPageState extends State<CameraPage>
           _zoomWidget(context),
           _bottomControlsWidget(),
           _circleWidget(),
+          if (Preferences.getAiSuggestionEnabled()) _aiSuggestionWidget(),
           // 已移除：旧的 LUT 弹层组件
         ],
       ),
@@ -310,35 +329,28 @@ class _CameraPageState extends State<CameraPage>
       debugPrint('[Camera] Safe area padding: top=${pads.top}, bottom=${pads.bottom}');
       debugPrint('[Camera] Available space: ${availableWidth}x$availableHeight dp');
       
-      return Center(
-        child: Listener(
-          onPointerDown: (_) => _pointers++,
-          onPointerUp: (_) => _pointers--,
-          child: AnimatedBuilder(
-            // Rebuild preview when LUT state changes
-            animation: LutPreviewManager.instance,
-            builder: (context, _) {
-              return LutPreviewManager.instance.createPreviewWidget(
-                cameraController,
-                isRearCamera: isRearCameraSelected,
-                screenWidth: availableWidth,
-                screenHeight: availableHeight,
-                physicalWidth: px.width,
-                physicalHeight: px.height,
-                devicePixelRatio: dpr,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onScaleStart: _handleScaleStart,
-                  onScaleUpdate: _handleScaleUpdate,
-                  onTapDown: (TapDownDetails details) =>
-                      _onViewFinderTap(details, BoxConstraints(
-                        maxWidth: availableWidth,
-                        maxHeight: availableHeight,
-                      )),
-                ),
-              );
-            },
-          ),
+      return Listener(
+        onPointerDown: (_) => _pointers++,
+        onPointerUp: (_) => _pointers--,
+        child: AnimatedBuilder(
+          // Rebuild preview when LUT state changes
+          animation: LutPreviewManager.instance,
+          builder: (context, _) {
+            return LutPreviewManager.instance.createPreviewWidget(
+              cameraController,
+              isRearCamera: isRearCameraSelected,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onScaleStart: _handleScaleStart,
+                onScaleUpdate: _handleScaleUpdate,
+                onTapDown: (TapDownDetails details) =>
+                    _onViewFinderTap(details, BoxConstraints(
+                      maxWidth: availableWidth,
+                      maxHeight: availableHeight,
+                    )),
+              ),
+            );
+          },
         ),
       );
     } else {
@@ -631,6 +643,8 @@ class _CameraPageState extends State<CameraPage>
       // 延迟重新启动图像流，确保相机完全初始化
       Future.delayed(const Duration(milliseconds: 300), () {
         LutPreviewManager.instance.resumeImageStream();
+        // 在相机完全初始化后启动AI服务
+        _aiService.startService(controller);
       });
     }
 
@@ -684,29 +698,44 @@ class _CameraPageState extends State<CameraPage>
       return null;
     }
 
-    // 停止图像流以避免冲突
+    // 停止图像流以避免冲突，并记录耗时以排查延迟
+    final Stopwatch sw = Stopwatch()..start();
     await LutPreviewManager.instance.stopImageStream();
+    sw.stop();
+    debugPrint('[Capture] stopImageStream took: ${sw.elapsedMilliseconds} ms');
 
-    setState(() {
-      Timer.periodic(
-        const Duration(milliseconds: 500),
-        (Timer t) => setState(() {}),
-      );
-      _timerStopwatch.start();
-    });
-
-    await Future.delayed(Duration(seconds: Preferences.getTimerDuration()));
-
-    setState(() {
-      _timerStopwatch.stop();
-      _timerStopwatch.reset();
-    });
+    final int delaySec = Preferences.getTimerDuration();
+    if (delaySec > 0) {
+      setState(() {
+        Timer.periodic(
+          const Duration(milliseconds: 500),
+          (Timer t) => setState(() {}),
+        );
+        _timerStopwatch.start();
+      });
+      await Future.delayed(Duration(seconds: delaySec));
+      setState(() {
+        _timerStopwatch.stop();
+        _timerStopwatch.reset();
+      });
+    }
 
     try {
+      final t0 = DateTime.now();
+      // 如无倒计时，提前播放快门声以提升感知速度
+      bool playedShutter = false;
+      if (delaySec == 0 && !Preferences.getDisableShutterSound()) {
+        var methodChannel = AndroidMethodChannel();
+        methodChannel.shutterSound();
+        playedShutter = true;
+      }
+
       final XFile file = await cameraController.takePicture();
+      final t1 = DateTime.now();
+      debugPrint('[Capture] takePicture() took: ${t1.difference(t0).inMilliseconds} ms');
       takingPicture = true;
 
-      if (!Preferences.getDisableShutterSound()) {
+      if (!Preferences.getDisableShutterSound() && !playedShutter) {
         var methodChannel = AndroidMethodChannel();
         methodChannel.shutterSound();
       }
@@ -745,15 +774,15 @@ class _CameraPageState extends State<CameraPage>
           // 读取当前文件并应用 LUT（优先 GPU 全分辨率渲染，失败则回退到软件）
           final srcBytes = await capturedFile!.readAsBytes();
           try {
-            newFileBytes = await GpuLutStillRenderer.processJpegWithLut(
+            final gpuOut = await GpuLutStillRenderer.processJpegWithLut(
               jpegBytes: srcBytes,
               lutPath: manager.currentLutPath!,
               mixStrength: manager.mixStrength,
               jpegQuality: Preferences.getCompressQuality(),
             );
-            if (Preferences.getKeepEXIFMetadata()) {
-              newFileBytes = _injectJpegExif(newFileBytes!, srcBytes);
-            }
+            newFileBytes = Preferences.getKeepEXIFMetadata()
+                ? _injectJpegExif(gpuOut, srcBytes)
+                : gpuOut;
           } catch (_) {
             newFileBytes = await _applyLutToImageBytes(
               srcBytes: srcBytes,
@@ -784,12 +813,12 @@ class _CameraPageState extends State<CameraPage>
 
       //var tempFile = capturedFile!.copySync('$directory/IMG_${timestamp()}.$fileFormat');
       try {
-        final tempFile = capturedFile!.copySync(path);
-        await tempFile.writeAsBytes(newFileBytes!);
+        final outFile = File(path);
+        await outFile.writeAsBytes(newFileBytes!, flush: true);
 
         final methodChannel = AndroidMethodChannel();
-        await methodChannel.updateItem(file: tempFile);
-        capturedFile = File(path);
+        await methodChannel.updateItem(file: outFile);
+        capturedFile = outFile;
       } catch (e) {
         if (mounted) showSnackbar(text: e.toString());
       }
@@ -924,9 +953,9 @@ class _CameraPageState extends State<CameraPage>
       }
       if (i + 1 >= originalBytes.length) break;
       final len = (originalBytes[i] << 8) | originalBytes[i + 1];
-      final segStart = i - 2; // includes 0xFF marker already consumed? adjust back 2 bytes
-      final dataStart = i + 2;
-      final segEnd = dataStart + len;
+      final segStart = i - 2; // points to the 0xFF marker byte
+      final dataStart = i + 2; // start of APP1 payload (after 2-byte length)
+      final segEnd = i + len; // total segment = marker(2) + len bytes
       if (segEnd > originalBytes.length) break;
 
       // APP1 Exif
@@ -938,7 +967,11 @@ class _CameraPageState extends State<CameraPage>
             originalBytes[dataStart + 3] == 0x66 && // 'f'
             originalBytes[dataStart + 4] == 0x00 &&
             originalBytes[dataStart + 5] == 0x00) {
-          final exifSeg = originalBytes.sublist(segStart, segEnd);
+          // Copy APP1 (Exif) segment and将 Orientation 标记规范化为 1（已将像素烘焙到正确方向）
+          final exifSeg = Uint8List.fromList(originalBytes.sublist(segStart, segEnd));
+          try {
+            _sanitizeExifOrientationInApp1(exifSeg);
+          } catch (_) {}
           // 将 EXIF 插入新 JPEG 的 SOI 之后
           final out = BytesBuilder();
           out.add([0xFF, 0xD8]);
@@ -951,6 +984,76 @@ class _CameraPageState extends State<CameraPage>
       i = segEnd;
     }
     return newJpeg;
+  }
+
+  // 将 APP1(Exif) 段中的 Orientation(0x0112) 设置为 1（Top-left），避免像素已烘焙后再次被旋转
+  // exifApp1: 完整 APP1 段，从 0xFF 0xE1 开始，长度包含在偏移 2..3 两字节（大端）
+  void _sanitizeExifOrientationInApp1(Uint8List exifApp1) {
+    if (exifApp1.length < 12) return;
+    // 验证 0xFFE1
+    if (!(exifApp1[0] == 0xFF && exifApp1[1] == 0xE1)) return;
+    final len = (exifApp1[2] << 8) | exifApp1[3];
+    if (len + 2 > exifApp1.length) return; // 2字节 marker 不计入 len
+    // 验证 Exif\0\0
+    final exifHeaderStart = 4;
+    if (exifApp1.length < exifHeaderStart + 6) return;
+    if (!(exifApp1[exifHeaderStart] == 0x45 && // E
+        exifApp1[exifHeaderStart + 1] == 0x78 && // x
+        exifApp1[exifHeaderStart + 2] == 0x69 && // i
+        exifApp1[exifHeaderStart + 3] == 0x66 && // f
+        exifApp1[exifHeaderStart + 4] == 0x00 &&
+        exifApp1[exifHeaderStart + 5] == 0x00)) return;
+
+    final tiffStart = exifHeaderStart + 6;
+    if (exifApp1.length < tiffStart + 8) return;
+    final littleEndian =
+        (exifApp1[tiffStart] == 0x49 && exifApp1[tiffStart + 1] == 0x49);
+    // 验证 0x002A
+    int _readU16(int off) => littleEndian
+        ? (exifApp1[off] | (exifApp1[off + 1] << 8))
+        : ((exifApp1[off] << 8) | exifApp1[off + 1]);
+    int _readU32(int off) => littleEndian
+        ? (exifApp1[off] |
+            (exifApp1[off + 1] << 8) |
+            (exifApp1[off + 2] << 16) |
+            (exifApp1[off + 3] << 24))
+        : ((exifApp1[off] << 24) |
+            (exifApp1[off + 1] << 16) |
+            (exifApp1[off + 2] << 8) |
+            exifApp1[off + 3]);
+    void _writeU16(int off, int v) {
+      if (littleEndian) {
+        exifApp1[off] = (v & 0xFF);
+        exifApp1[off + 1] = ((v >> 8) & 0xFF);
+      } else {
+        exifApp1[off] = ((v >> 8) & 0xFF);
+        exifApp1[off + 1] = (v & 0xFF);
+      }
+    }
+
+    final magic = _readU16(tiffStart + 2);
+    if (magic != 0x002A) return;
+    final ifd0Offset = _readU32(tiffStart + 4);
+    final ifd0Start = tiffStart + ifd0Offset;
+    if (ifd0Start + 2 > exifApp1.length) return;
+    final entryCount = _readU16(ifd0Start);
+    int entryBase = ifd0Start + 2;
+    const tagOrientation = 0x0112;
+    for (int i = 0; i < entryCount; i++) {
+      final e = entryBase + i * 12;
+      if (e + 12 > exifApp1.length) break;
+      final tag = _readU16(e);
+      if (tag == tagOrientation) {
+        final type = _readU16(e + 2); // SHORT=3
+        final count = _readU32(e + 4);
+        if (type == 3 && count >= 1) {
+          // 值就在 valueOffset 4 字节中（2 字节有效）
+          final valueOff = e + 8;
+          _writeU16(valueOff, 1); // set to 1 (Top-left)
+        }
+        break;
+      }
+    }
   }
 
   //Zoom
@@ -1153,6 +1256,143 @@ class _CameraPageState extends State<CameraPage>
     final DateFormat formatter = DateFormat('yyyyMMdd_HHmmss');
     final String formatted = formatter.format(now);
     return formatted;
+  }
+
+  Widget _aiSuggestionWidget() {
+    return Positioned(
+      left: _aiWidgetX,
+      bottom: _aiWidgetY,
+      child: GestureDetector(
+        onPanUpdate: (details) {
+          setState(() {
+            // 获取屏幕尺寸
+            final screenSize = MediaQuery.of(context).size;
+            const componentWidth = 200.0;
+            const componentHeight = 120.0;
+            
+            // 更新位置，确保不会超出屏幕边界
+            _aiWidgetX = (_aiWidgetX + details.delta.dx).clamp(
+              0.0, 
+              screenSize.width - componentWidth,
+            );
+            _aiWidgetY = (_aiWidgetY - details.delta.dy).clamp(
+              0.0, 
+              screenSize.height - componentHeight - 100, // 预留底部空间
+            );
+          });
+        },
+        onPanEnd: (details) {
+          // 拖拽结束时保存位置到本地存储
+          Preferences.setAiWidgetX(_aiWidgetX);
+          Preferences.setAiWidgetY(_aiWidgetY);
+        },
+        child: AnimatedBuilder(
+          animation: _aiService,
+          builder: (context, child) {
+            final isReadyToShoot = _aiService.readyToShoot == 1;
+            final borderColor = isReadyToShoot 
+              ? Colors.green.withOpacity(0.6)
+              : Colors.white.withOpacity(0.2);
+            final backgroundColor = isReadyToShoot
+              ? Colors.black.withOpacity(0.8)
+              : Colors.black.withOpacity(0.7);
+            
+            return Container(
+              width: 200,
+              height: 120,
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(12), // 圆角
+                border: Border.all(
+                  color: borderColor,
+                  width: isReadyToShoot ? 2 : 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isReadyToShoot 
+                      ? Colors.green.withOpacity(0.3)
+                      : Colors.black.withOpacity(0.3),
+                    blurRadius: isReadyToShoot ? 12 : 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isReadyToShoot ? Icons.check_circle : Icons.auto_awesome,
+                          color: isReadyToShoot 
+                            ? Colors.green.withOpacity(0.9)
+                            : Colors.white.withOpacity(0.9),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isReadyToShoot ? '准备拍摄' : 'AI 建议',
+                          style: TextStyle(
+                            color: isReadyToShoot 
+                              ? Colors.green.withOpacity(0.9)
+                              : Colors.white.withOpacity(0.9),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (_aiService.isUploading)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8.0),
+                            child: SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white60),
+                              ),
+                            ),
+                          ),
+                        const Spacer(),
+                        // 添加拖拽指示图标
+                        Icon(
+                          Icons.drag_indicator,
+                          color: Colors.white.withOpacity(0.5),
+                          size: 14,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: isReadyToShoot 
+                        ? const Center(
+                            child: Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                              size: 32,
+                            ),
+                          )
+                        : Text(
+                            _aiService.currentSuggestion,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 11,
+                              height: 1.3,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   void showSnackbar({required String text}) {

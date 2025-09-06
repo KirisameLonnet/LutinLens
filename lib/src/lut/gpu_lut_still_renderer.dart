@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
+// Uint8List/ByteData 已由 flutter/services.dart 间接提供
 import 'dart:io';
 import 'dart:ui' as ui;
 

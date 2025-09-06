@@ -171,4 +171,33 @@ class Preferences {
       await _preferences!.setBool(prefLutEnabled, enabled);
   static bool getLutEnabled() =>
       _preferences!.getBool(prefLutEnabled) ?? true;
+
+  // AI服务器URL
+  static Future setAiServerUrl(String url) async =>
+      await _preferences!.setString(prefAiServerUrl, url);
+  static String getAiServerUrl() =>
+      _preferences!.getString(prefAiServerUrl) ?? '';
+
+  // AI建议功能是否启用
+  static Future setAiSuggestionEnabled(bool enabled) async =>
+      await _preferences!.setBool(prefAiSuggestionEnabled, enabled);
+  static bool getAiSuggestionEnabled() =>
+      _preferences!.getBool(prefAiSuggestionEnabled) ?? false;
+
+  // AI测试模式是否启用
+  static Future setAiTestMode(bool enabled) async =>
+      await _preferences!.setBool(prefAiTestMode, enabled);
+  static bool getAiTestMode() =>
+      _preferences!.getBool(prefAiTestMode) ?? false;
+
+  // AI组件位置
+  static Future setAiWidgetX(double x) async =>
+      await _preferences!.setDouble(prefAiWidgetX, x);
+  static double getAiWidgetX() =>
+      _preferences!.getDouble(prefAiWidgetX) ?? 40.0;
+
+  static Future setAiWidgetY(double y) async =>
+      await _preferences!.setDouble(prefAiWidgetY, y);
+  static double getAiWidgetY() =>
+      _preferences!.getDouble(prefAiWidgetY) ?? 40.0;
 }

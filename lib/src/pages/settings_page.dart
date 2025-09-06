@@ -66,6 +66,84 @@ class _SettingsPageState extends State<SettingsPage> {
     fontWeight: FontWeight.bold,
   );
 
+  Widget _aiSuggestionEnabledTile() {
+    return SwitchListTile(
+      title: const Text('AI智能建议'),
+      subtitle: const Text('开启后，摄像机会定期向服务器发送预览图像以获取拍摄建议'),
+      value: Preferences.getAiSuggestionEnabled(),
+      onChanged: (value) async {
+        await Preferences.setAiSuggestionEnabled(value);
+        setState(() {});
+      },
+    );
+  }
+
+  Widget _aiTestModeTile() {
+    return SwitchListTile(
+      title: const Text('AI测试模式'),
+      subtitle: const Text('启用内嵌HTTP服务器 (127.0.0.1:1234) 进行本地测试'),
+      value: Preferences.getAiTestMode(),
+      onChanged: (value) async {
+        await Preferences.setAiTestMode(value);
+        setState(() {});
+      },
+    );
+  }
+
+  Widget _aiServerUrlTile() {
+    return ListTile(
+      title: const Text('AI服务器地址'),
+      subtitle: Text(
+        Preferences.getAiServerUrl().isEmpty 
+          ? '未设置' 
+          : Preferences.getAiServerUrl(),
+      ),
+      trailing: const Icon(Icons.keyboard_arrow_right),
+      onTap: () {
+        _showAiServerUrlDialog();
+      },
+    );
+  }
+
+  void _showAiServerUrlDialog() {
+    final TextEditingController controller = TextEditingController(
+      text: Preferences.getAiServerUrl(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('设置AI服务器地址'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: '例如：https://ai.example.com 或 192.168.1.100:8080',
+            labelText: '服务器地址',
+          ),
+          keyboardType: TextInputType.url,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              String url = controller.text.trim();
+              if (url.isNotEmpty && !url.startsWith('http')) {
+                url = 'http://$url';
+              }
+              await Preferences.setAiServerUrl(url);
+              setState(() {});
+              Navigator.of(context).pop();
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _moreTile() {
     return Padding(
       padding: const EdgeInsets.only(left: 32.0),
@@ -590,6 +668,13 @@ class _SettingsPageState extends State<SettingsPage> {
             _keepEXIFMetadataTile(),
             const Divider(),
             _savePathTile(),
+            const Divider(),
+            _headingTile('AI设置'),
+            _aiSuggestionEnabledTile(),
+            const Divider(),
+            _aiTestModeTile(),
+            const Divider(),
+            _aiServerUrlTile(),
             const Divider(),
             _showMoreTile(),
             if (isMoreOptions) _moreTile(),

@@ -68,6 +68,7 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
 
   bool _streaming = false;
   bool _isProcessing = false;
+  bool _stopRequested = false;
   bool _loading = true;
   // 当前 LUT 名称（调试可用）
 
@@ -172,6 +173,7 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
   Future<void> _stopStreamIfNeeded() async {
     if (!_streaming) return;
     try {
+      _stopRequested = true;
       await widget.cameraController.stopImageStream();
     } catch (_) {}
     _streaming = false;
@@ -183,6 +185,7 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
   }
 
   Future<void> _processFrame(CameraImage image) async {
+    if (_stopRequested) return;
     final int srcW = image.width;
     final int srcH = image.height;
     final yRgba = _packYPlaneToRgba(image);
@@ -368,51 +371,31 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
     final rotationRad = _computeRotation(isPortrait);
     final mirror = !widget.isRearCamera;
 
-    // 计算画布尺寸：优先使用物理分辨率，其次逻辑分辨率，最后回退到相机源尺寸
-    double canvasWidth = _srcW.toDouble();
-    double canvasHeight = _srcH.toDouble();
-    
-    if (widget.physicalWidth != null && widget.physicalHeight != null) {
-      // 使用物理分辨率（像素级精确）
-      canvasWidth = widget.physicalWidth!;
-      canvasHeight = widget.physicalHeight!;
-      
-      debugPrint('[GPU] Using physical resolution: ${canvasWidth}x$canvasHeight px (DPR: ${widget.devicePixelRatio ?? 'unknown'})');
-    } else if (widget.screenWidth != null && widget.screenHeight != null) {
-      // 回退到逻辑分辨率
-      canvasWidth = widget.screenWidth!;
-      canvasHeight = widget.screenHeight!;
-      
-      debugPrint('[GPU] Using logical resolution: ${canvasWidth}x$canvasHeight dp');
-    } else {
-      debugPrint('[GPU] Using camera source resolution: ${canvasWidth}x$canvasHeight px');
-    }
+    // 照搬原生CameraPreview方案：不强制指定画布尺寸，让父容器（CameraPreview）决定
+    // 使用相机源尺寸作为CustomPaint的固有尺寸，但允许父容器进行缩放
+    debugPrint('[GPU] Using camera source resolution as intrinsic size: ${_srcW}x$_srcH px');
 
-    // 构建基础绘制
-    Widget content = SizedBox(
-      width: canvasWidth,
-      height: canvasHeight,
-      child: CustomPaint(
-        painter: _GpuLutPainter(
-          program: _program!,
-          yImage: _yImage!,
-          uvImage: _uvImage!,
-          lutImage: _lut2D!,
-          srcW: _srcW,
-          srcH: _srcH,
-          uvW: _uvW,
-          uvH: _uvH,
-          mix: widget.mixStrength,
-          yuvMode: widget.yuvMode,
-          swapUV: widget.swapUV,
-          lutTilesX: widget.lutTilesX,
-          lutTilesY: widget.lutTilesY,
-          flipLutY: widget.flipLutY,
-          lutSize: widget.lutSize,
-        ),
-        isComplex: true,
-        willChange: true,
+    // 构建基础绘制 - 使用相机源尺寸作为固有尺寸
+    Widget content = CustomPaint(
+      painter: _GpuLutPainter(
+        program: _program!,
+        yImage: _yImage!,
+        uvImage: _uvImage!,
+        lutImage: _lut2D!,
+        srcW: _srcW,
+        srcH: _srcH,
+        uvW: _uvW,
+        uvH: _uvH,
+        mix: widget.mixStrength,
+        yuvMode: widget.yuvMode,
+        swapUV: widget.swapUV,
+        lutTilesX: widget.lutTilesX,
+        lutTilesY: widget.lutTilesY,
+        flipLutY: widget.flipLutY,
+        lutSize: widget.lutSize,
       ),
+      isComplex: true,
+      willChange: true,
     );
 
     // 先旋转（使用 RotatedBox 参与布局，避免旋转后出现黑边）
@@ -438,47 +421,22 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
       );
     }
 
-    // 最后进行一次 cover-fit 映射，填充至父级区域
-    Widget overlay;
-    
-    // 如果提供了屏幕尺寸，直接使用已计算好的画布尺寸，无需额外缩放
-    if (widget.screenWidth != null && widget.screenHeight != null) {
-      overlay = ClipRect(
-        child: OverflowBox(
-          minWidth: 0,
-          minHeight: 0,
-          maxWidth: double.infinity,
-          maxHeight: double.infinity,
-          child: content,
-        ),
-      );
-    } else if (isPortrait) {
-      // 竖屏模式：使用FittedBox确保正确缩放
-      overlay = FittedBox(
-        fit: BoxFit.cover,
-        child: content,
-      );
-    } else {
-      // 横屏模式：使用Positioned.fill确保完全填充
-      overlay = Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned.fill(
-            child: FittedBox(
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-              child: content,
-            ),
-          ),
-        ],
-      );
-    }
+    // 照搬原生CameraPreview方案：让父容器（CameraPreview）决定尺寸、缩放、裁切
+    // 我们只提供一个具有相机原始分辨率的 "画板"
+    Widget overlay = SizedBox(
+      width: _srcW.toDouble(),
+      height: _srcH.toDouble(),
+      child: content, // content 内部处理了旋转和镜像
+    );
 
     // 叠加子层（手势等）
     if (widget.child != null) {
-      overlay = Stack(children: [Positioned.fill(child: overlay), widget.child!]);
+      overlay = Stack(
+        children: [overlay, widget.child!],
+      );
     }
 
+    // 将缩放控制交由外层（CameraPage）处理，这里仅返回本体
     return overlay;
   }
 }

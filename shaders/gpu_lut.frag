@@ -38,24 +38,51 @@ uniform float uUvH;
 
 out vec4 fragColor;
 
-// Maps destination fragCoord to source pixel coords for cover-fit center crop.
+// Maps destination fragCoord to source pixel coords for contain-fit (no crop).
+// Returns coordinates in source pixel space.
+vec2 mapContain(vec2 fragCoord) {
+  float dstAspect = uDstW / uDstH;
+  float srcAspect = uSrcW / uSrcH;
+  float drawW;
+  float drawH;
+  // contain: fit inside destination; may letterbox
+  if (dstAspect > srcAspect) {
+    // destination is wider -> match height
+    drawH = uDstH;
+    drawW = drawH * srcAspect;
+  } else {
+    // destination is taller -> match width
+    drawW = uDstW;
+    drawH = drawW / srcAspect;
+  }
+  // Map fragCoord relative to centered draw rect to source pixels
+  vec2 center = vec2(uDstW * 0.5, uDstH * 0.5);
+  vec2 local = fragCoord - center;
+  // Scale to src pixel space
+  vec2 scaled = vec2(local.x * (uSrcW / drawW), local.y * (uSrcH / drawH));
+  vec2 srcCoord = vec2(uSrcW * 0.5, uSrcH * 0.5) + scaled;
+  return srcCoord;
+}
+
+// Maps destination fragCoord to source pixel coords for cover-fit (crop to fill).
 // Returns coordinates in source pixel space.
 vec2 mapCover(vec2 fragCoord) {
   float dstAspect = uDstW / uDstH;
   float srcAspect = uSrcW / uSrcH;
   float drawW;
   float drawH;
+  // cover: fill destination; may crop
   if (dstAspect > srcAspect) {
+    // destination is wider -> match width
     drawW = uDstW;
     drawH = drawW / srcAspect;
   } else {
+    // destination is taller -> match height
     drawH = uDstH;
     drawW = drawH * srcAspect;
   }
-  // Map fragCoord in dst rect center to source pixels
   vec2 center = vec2(uDstW * 0.5, uDstH * 0.5);
   vec2 local = fragCoord - center;
-  // Scale to src pixel space
   vec2 scaled = vec2(local.x * (uSrcW / drawW), local.y * (uSrcH / drawH));
   vec2 srcCoord = vec2(uSrcW * 0.5, uSrcH * 0.5) + scaled;
   return srcCoord;
@@ -91,7 +118,7 @@ vec3 sampleLut(float rr, float gg, float bb) {
 
 void main() {
   vec2 fragCoord = gl_FragCoord.xy;
-  // Map to source image pixel coords with cover-fit
+  // Map to source image pixel coords using cover-fit to match CameraPreview
   vec2 srcCoord = mapCover(fragCoord);
   // Sample source; if outside, make transparent
   if (srcCoord.x < 0.0 || srcCoord.y < 0.0 || srcCoord.x >= uSrcW || srcCoord.y >= uSrcH) {

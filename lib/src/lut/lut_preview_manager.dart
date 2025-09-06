@@ -74,13 +74,12 @@ class LutPreviewManager extends ChangeNotifier {
     double? devicePixelRatio,
     Widget? child,
   }) {
-    // 始终使用 CameraPreview 作为基础，LUT 以 overlay 子层叠加，
-    // 确保跟随 CameraPreview 的缩放/旋转逻辑（与上游一致）。
-    Widget overlay;
-    if (!_isEnabled || _currentLutPath == null) {
-      overlay = const SizedBox.shrink();
-    } else {
-      debugPrint('[LUT] Overlay=GPU path=$_currentLutPath strength=$_mixStrength');
+    // 学习原生无LUT方案：始终使用 CameraPreview 作为基础
+    // LUT 作为透明overlay叠加在相机预览之上，而不是替换整个预览
+    
+    Widget overlay = const SizedBox.shrink();
+    if (_isEnabled && _currentLutPath != null) {
+      debugPrint('[LUT] Creating overlay=GPU path=$_currentLutPath strength=$_mixStrength');
       overlay = GpuLutPreview(
         cameraController: cameraController,
         lutPath: _currentLutPath!,
@@ -94,42 +93,38 @@ class LutPreviewManager extends ChangeNotifier {
       );
     }
 
-    // 若启用 LUT：隐藏原生相机画布，仅渲染 LUT 结果，避免双层渲染导致比例不一致
+    // 照搬原生无LUT方案：始终返回 CameraPreview，LUT作为child叠加
+    final children = <Widget>[];
+
+    // 添加LUT overlay（如果启用）
     if (_isEnabled && _currentLutPath != null) {
-      debugPrint('[LUT] Rendering LUT-only (hide native preview)');
-      // 使用屏幕尺寸而不是相机宽高比来填充屏幕
-      if (screenWidth != null && screenHeight != null) {
-        return SizedBox(
-          width: screenWidth,
-          height: screenHeight,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              overlay,
-              if (child != null) child,
-            ],
-          ),
-        );
-      } else {
-        // 回退到原有逻辑
-        final aspect = cameraController.value.aspectRatio;
-        return AspectRatio(
-          aspectRatio: aspect,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              overlay,
-              if (child != null) child,
-            ],
-          ),
-        );
-      }
+      // 叠加层填充 CameraPreview 区域，匹配其 cover 行为
+      children.add(Positioned.fill(child: overlay));
     }
 
-    // 未启用 LUT：渲染原生 CameraPreview（与上游保持一致）
-    return CameraPreview(
-      cameraController,
-      child: child,
+    // 添加用户的child（手势检测等）
+    if (child != null) {
+      children.add(child);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hasLut = _isEnabled && _currentLutPath != null;
+        debugPrint(
+            '[CameraPreview] Canvas size (${hasLut ? "with LUT" : "no LUT"}): ${constraints.maxWidth}x${constraints.maxHeight}');
+
+        return CameraPreview(
+          cameraController,
+          // 通过 Stack(center) 且 clipBehavior:none，避免对 LUT 预览进行裁切或缩放
+          child: children.isNotEmpty
+              ? Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none, // 移除裁切
+                  children: children,
+                )
+              : child,
+        );
+      },
     );
   }
 

@@ -1,122 +1,135 @@
-LUT Feature TODO
+# LutinLens TODO
 
-This document tracks remaining work to deliver a robust, real-time LUT pipeline across preview, capture, and management. Includes a Done section to reflect progress.
+This document tracks prioritized, actionable work items across stability, performance, architecture, tests/CI, and docs. Use GitHub issues for execution details and link items back here. Check boxes when done.
 
-Done
+## Conventions
+- [ ] Item: concise action with crisp acceptance criteria
+- Priority: P0 (urgent), P1 (soon), P2 (later)
+- Area tags: [App], [Camera], [LUT], [AI], [Android], [Build], [Test], [Docs], [UX], [I18n]
 
-- [x] Software LUT overlay on CameraPreview (downsampled YUV -> RGBA -> LUT -> canvas overlay)
-  - File: `lib/src/lut/simple_lut_preview.dart`
-- [x] Provider → preview wiring and selection persistence (name/path)
-  - Files: `lib/src/provider/lut_provider.dart`, `lib/src/utils/preferences.dart`
-- [x] Default LUT path now uses user luts directory
-  - File: `lib/src/lut/lut_preview_manager.dart`
-- [x] Exposed image stream stop/resume hooks for coordination
-  - Files: `lib/src/lut/simple_lut_preview.dart`, `lib/src/lut/lut_preview_manager.dart`
-- [x] Remove all video functionality; app is photo-only
-  - Files: `lib/src/pages/camera_page.dart`, `lib/src/widgets/capture_control.dart`
+## P0 — Stability & Performance
 
-P0 — Must Fix/Implement
+- [ ] [Camera] Select cameras by `lensDirection` instead of index
+  - Context: `lib/src/pages/camera_page.dart:107`, `:566`
+  - Action: Implement helper to pick `CameraDescription` by `CameraLensDirection.back/front` with fallback when one side is missing. Replace index-based usage in init and switch.
+  - Acceptance: App boots and switches camera reliably on devices with non-0/1 ordering; no crashes if only one camera exists.
 
-- [x] Wire provider to preview manager
-  - Selecting a LUT via selector/management switches the preview overlay and persists selection (name/path).
+- [ ] [App] Unify orientation management in one place
+  - Context: `lib/main.dart:31` and `lib/src/pages/camera_page.dart:200-230`
+  - Action: Decide single source (prefer app entry) for `SystemChrome.setPreferredOrientations`, remove delayed orientation set in page. Respect `Preferences.getIsCaptureOrientationLocked()`.
+  - Acceptance: No duplicate orientation calls; no flicker on page load; manual lock works.
 
-- [x] Default LUT copy logic and CSV name
-  - Dynamic discovery of available LUTs; no hardcoding.
-  - Accepts both `describe.csv` and legacy `discribe.csv`; generates per-LUT `*_describe.csv` and supports generic `describe.csv` for updates.
-  - File: `lib/src/utils/lut_manager.dart`
-  - Acceptance: Fresh init copies whatever default LUTs exist without errors and provides description metadata.
+- [ ] [LUT] Reduce per-frame CPU and allocation in GPU preview
+  - Context: `lib/src/lut/gpu_lut_preview.dart:161, 200-280`
+  - Actions:
+    - Reuse `Uint8List` buffers for Y/UV packing across frames.
+    - Throttle processing (e.g., max 30 FPS or every Nth frame).
+    - Optionally downsample before packing (configurable).
+  - Acceptance: Average CPU usage and GC pressure drop during preview; visual smoothness acceptable; no frame leaks.
 
- - [x] Preview/image stream coordination for capture
-  - Implemented in `lib/src/pages/camera_page.dart` within `takePicture()` using `LutPreviewManager.instance.stopImageStream()` / `resumeImageStream()`.
-  - Acceptance: Taking pictures works reliably with LUT preview enabled (no concurrent stream errors).
+- [ ] [LUT][AI] Single image stream coordination & frame sharing
+  - Context: AI service TODO at `lib/src/services/ai_suggestion_service.dart:120`; stream control callbacks in `LutPreviewManager`.
+  - Actions:
+    - Add a lightweight frame bus in `LutPreviewManager` that exposes a throttled latest frame (small JPEG/PNG) for consumers.
+    - AI service subscribes to that bus instead of starting its own stream.
+    - Ensure `stopImageStream/resumeImageStream` remain authoritative for capture.
+  - Acceptance: Only one active camera stream; AI uploads happen without stream conflicts; capture still pauses/resumes properly.
 
- - [x] Orientation and mirror correctness for overlay
-  - Implemented in `lib/src/lut/simple_lut_preview.dart` painter: rotates by `deviceOrientation` and mirrors for front camera.
-  - Acceptance: Overlay aligns with preview across orientations and front/back cameras.
+- [ ] [AI][Net] Harden HTTP client and timeouts
+  - Context: `lib/src/services/ai_suggestion_service.dart:149-191`
+  - Actions: Add retry with backoff, per-host circuit breaker, and configurable timeouts; optionally support HTTPS and pin/allow self-signed based on user setting.
+  - Acceptance: Network blips don’t spam UI; no freezes; user can require HTTPS.
 
-- [ ] Handle controller changes
-  - When the active `CameraController` changes (camera switch), ensure the previous image stream is stopped and the new one is started if needed.
-  - Acceptance: Switching cameras keeps preview stable; no orphaned streams.
-  
-  Status: Implemented
-  - [x] Stop/resume around camera switch and controller init; notify provider to resync LUT
-  - Files: `lib/src/pages/camera_page.dart` (onNewCameraSelected, _initializeCameraController), `lib/src/provider/lut_provider.dart:onCameraControllerChanged`
+## P1 — Architecture & Code Health
 
-P1 — Next Up
+- [ ] [LUT] Consolidate `LutProvider` vs `LutPreviewManager`
+  - Context: Provider exists but is not integrated in `lib/src/app.dart`; `LutPreviewManager` used directly.
+  - Actions: Choose single source of truth. If keeping Provider, route preview updates via Provider and keep manager internal. Otherwise remove Provider and adjust UI accordingly.
+  - Acceptance: No dead code; consistent state updates with fewer singletons.
 
-- [ ] Persist preview state
-  - [x] Persist selected LUT (name/path)
-  - [x] Persist mix strength
-  - [x] Persist enabled flag
-  - [x] Initialize from persisted state during app start.
-  - Files: `lib/src/lut/lut_preview_manager.dart`, `lib/src/provider/lut_provider.dart`, `lib/src/utils/preferences.dart`.
-  - Acceptance: App restores last used LUT and strength/enable after restart.
+- [ ] [Android] Method channel error handling and safety
+  - Context: `lib/src/pages/camera_page.dart:1406-1519` (AndroidMethodChannel)
+  - Actions: Wrap calls in try/catch with typed error logs and user feedback; ensure channel methods are no-ops on non-Android.
+  - Acceptance: No unhandled exceptions when methods are missing or on iOS.
 
-- [x] Wire `LutMixControl` to persistence
-  - `setMixStrength` persists via `LutPreviewManager`; slider reads current value from manager.
-  - Acceptance: Mix slider reflects persisted value on launch and changes survive restarts.
+- [ ] [Camera] Remove unused `FutureBuilder` in `CaptureControlWidget`
+  - Context: `lib/src/widgets/capture_control.dart:97`
+  - Actions: Delete the `FutureBuilder` or use the device info to tailor UI; prefer simple `switchButton()`.
+  - Acceptance: No functional change, simpler rebuild path.
 
-- [ ] Unify LUT settings/management flow
-  - Implement import in `lib/src/lut/lut_settings_page.dart` via `LutProvider.importLut(...)`.
-  - Prefer a single entry point in camera UI (e.g., `CompactLutSelector`) for selection and quick access to management.
-  - Acceptance: No duplicated responsibilities; import works and updates the preview.
+- [ ] [Imaging] EXIF migration safety & memory limits
+  - Context: `_injectJpegExif` in `lib/src/pages/camera_page.dart:1030+`
+  - Actions: Bound processing for extremely large files; guard non-JPEG paths; add unit tests for EXIF orientation sanitize.
+  - Acceptance: Stable on large images; unit tests pass.
 
-- [ ] Permission checks for import/export
-  - Use `permission_handler` to request storage/media permissions before import/export.
-  - Files: `lib/src/pages/lut_management_page.dart`, `lib/src/utils/lut_manager.dart`.
-  - Acceptance: Import/export succeeds across API levels with proper prompts.
+- [ ] [Logs] Centralized logging facade
+  - Actions: Introduce a simple `logger.dart` with levels and tags; funnel `debugPrint` through it; silence in release as needed.
+  - Acceptance: Reduced noisy logs in release; consistent tags.
 
-- [ ] Improve cube parser resilience
-  - Support optional `DOMAIN_MIN`/`DOMAIN_MAX` and stricter error messages with line context.
-  - File: `lib/src/lut/cube_loader.dart`.
-  - Acceptance: Wider .cube compatibility and clearer error logs.
+## P1 — Tests & CI
 
-- [ ] UV plane compatibility toggle
-  - Provide a fallback to swap U/V if colors are off on certain devices; optionally support BT.709.
-  - File: `lib/src/lut/simple_lut_preview.dart`.
-  - Acceptance: Color accuracy fix available for affected devices.
+- [ ] [Test] Replace default counter widget test
+  - Context: `test/widget_test.dart`
+  - Actions: Remove sample; add tests for `Preferences`, `LutManager` (asset enumeration with fakes), EXIF sanitizer, and `LutControlWidget` basic interactions (golden optional).
+  - Acceptance: `flutter test` passes locally with meaningful coverage.
 
-- [ ] Asset declarations cleanup
-  - In `pubspec.yaml`, avoid listing the entire `lib/src/lut/` as assets; only include required resources (e.g., `lut_shader.glsl`) if needed.
-  - Acceptance: Smaller asset bundle; no runtime missing asset issues.
+- [ ] [CI] Add GitHub Actions for analyze, test, (optional) build
+  - Actions: Workflow with `flutter pub get`, `flutter analyze`, `flutter test`; optionally cache pub; add build job guarded by tag or manual trigger.
+  - Acceptance: CI runs on PRs and main; clear status checks.
 
-- [ ] Remove video remnants
-  - Drop `video_thumbnail` dependency from `pubspec.yaml`, remove unused l10n strings and any video-related settings toggles.
-  - Acceptance: Build has no unused video deps/strings; settings show only photo-related options.
+- [ ] [Lints] Tighten analyzer rules
+  - Context: `analysis_options.yaml`
+  - Actions: Enable stricter rules (e.g., `unawaited_futures`, `prefer_final_fields`, `always_declare_return_types`). Consider re-enabling `strict-inference/raw-types`.
+  - Acceptance: Repo is warning-clean under new rules.
 
-- [ ] Tests for LUT and stream coordination
-  - Add/complete tests for: default LUT copy/describe fallback, import/delete flow, and stop/resume image stream around capture.
-  - Files: `test/lut_manager_test.dart`, `test/image_stream_coordination_test.dart`.
-  - Acceptance: Tests pass and cover the main flows.
+## P1 — Docs & Build
 
-P2 — Later/Enhancements
+- [ ] [Docs] Update README with AI Suggestion overview & privacy
+  - Actions: Document AI modes (embedded/test vs. external server), data handling, and opt-in controls; link `AI_TEST_MODE.md` and `EMBEDDED_AI_SERVER.md`.
+  - Acceptance: Users understand what is sent, how to disable, and how to run test mode.
 
-- [ ] GPU-based real-time LUT preview
-  - Implement a `LutRenderer` using `flutter_gl` and `lib/src/lut/lut_shader.glsl`:
-    - Upload Y/U/V as textures, LUT as 3D texture (or 2D strip) and render with shader mixing.
-    - Replace software overlay for better performance and fidelity.
-  - Files: `lib/src/lut/lut_preview.dart` (refactor), new renderer service.
-  - Acceptance: Smooth 30/60fps preview with low CPU usage.
+- [ ] [Build] Document `flutter_gl` and `threeegl.aar` setup
+  - Context: `scripts/install_threeegl_aar.sh`, `pubspec.yaml` overrides
+  - Actions: Add “Build prerequisites” to README; script usage and troubleshooting.
+  - Acceptance: New contributors can build without guesswork.
 
-- [ ] Offline LUT application on captured photos
-  - After capture, apply LUT with `SoftwareLutProcessor` in an isolate (or GPU) before saving.
-  - File: `lib/src/pages/camera_page.dart`.
-  - Acceptance: Saved photo matches preview look (within reason/transfer function).
+## P2 — UX, I18n, Nice-to-haves
 
-- [ ] Clean up `lib/src/lut/lut_preview.dart`
-  - Remove half-finished GL snippets and rebuild around the renderer service.
-  - Acceptance: No dead code; clear, maintainable pipeline.
+- [ ] [UX] Improve accessibility and semantics
+  - Actions: Add `Semantics` and `tooltip` to key controls; ensure AI suggestion widget has labels and focus order.
+  - Acceptance: TalkBack/VoiceOver reads critical actions.
 
-- [ ] Diagnostics & toggles
-  - Add a debug panel: show frame time, target size, UV mode; toggle between software/GPU paths when both exist.
-  - Acceptance: Easier QA across devices.
+- [ ] [I18n] Localize AI suggestion texts and new UI strings
+  - Actions: Add keys to `app_localizations_*.dart` and use via `AppLocalizations`; ensure Chinese, English at minimum.
+  - Acceptance: New UI fully localized; l10n gen passes.
 
-Notes / References
+- [ ] [LUT] Additional LUT formats and caching
+  - Actions: Support common 2D LUT atlases (PNG) with inferred tiling; cache parsed LUTs by path and mtime.
+  - Acceptance: Faster LUT switching; stable visuals.
 
-- Preview overlay implementation: `lib/src/lut/simple_lut_preview.dart`
-- Provider and state: `lib/src/provider/lut_provider.dart`
-- Manager: `lib/src/lut/lut_preview_manager.dart`
-- LUT files and copy: `lib/src/utils/lut_manager.dart`
-- Cube parser: `lib/src/lut/cube_loader.dart`
-- Shader (future GPU path): `lib/src/lut/lut_shader.glsl`
-- Camera page (capture & UI): `lib/src/pages/camera_page.dart`
+- [ ] [AI] Configurable upload resolution and cadence
+  - Actions: Add settings for downscale factor and interval; persist in `Preferences`.
+  - Acceptance: Users on low bandwidth can tune cost.
+
+- [ ] [Perf] Optional on-screen perf HUD (FPS, ms/frame)
+  - Actions: Small overlay toggled via dev setting; logs aggregated with rolling average.
+  - Acceptance: Aids profiling without attaching tools.
+
+## Task Breakdown (Suggested Order)
+1) P0: LensDirection camera selection + orientation unification
+2) P0: Single image stream + GPU preview allocations reduction
+3) P1: Replace tests + add CI + tighten lints
+4) P1: Cleanup Provider vs Manager, EXIF safety, logging
+5) P1: Docs for AI/privacy and build prerequisites
+6) P2: UX/I18n polish and optional features
+
+## References
+- Camera usage: `lib/src/pages/camera_page.dart`
+- GPU LUT: `lib/src/lut/gpu_lut_preview.dart`, `lib/src/lut/lut_preview_manager.dart`
+- AI service: `lib/src/services/ai_suggestion_service.dart`, `lib/src/services/embedded_ai_server.dart`
+- Preferences & globals: `lib/src/utils/preferences.dart`, `lib/src/globals.dart`
+- Widgets: `lib/src/widgets/*`
+- Provider (optional): `lib/src/provider/lut_provider.dart`
+- Tests: `test/*`
+- Config: `analysis_options.yaml`, `pubspec.yaml`, `.github/workflows/*`
+
