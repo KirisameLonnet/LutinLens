@@ -15,7 +15,6 @@ import '../../l10n/app_localizations.dart';
 import 'package:librecamera/main.dart';
 import 'package:librecamera/src/widgets/resolution.dart';
 import 'package:librecamera/src/widgets/timer.dart';
-import 'package:native_device_orientation/native_device_orientation.dart';
 // import 'package:permission_handler/permission_handler.dart';
 //import 'package:qr_code_scanner/qr_code_scanner.dart' as qr;
 
@@ -71,9 +70,6 @@ class _CameraPageState extends State<CameraPage>
   //Photo capture timer
   final Stopwatch _timerStopwatch = Stopwatch();
 
-  //Orientation
-  DateTime _timeOfLastChange = DateTime.now();
-
   //Volume buttons
   StreamSubscription<HardwareButton>? volumeSubscription;
   bool canPressVolume = true;
@@ -93,11 +89,8 @@ class _CameraPageState extends State<CameraPage>
     /*final methodChannel = AndroidMethodChannel();
     methodChannel.disableIntentCamera(disable: true);*/
 
-    // 恢复上游逻辑：订阅设备方向，更新系统首选方向，
-    // 由 CameraPreview 负责预览的旋转与缩放。
-    if (!Preferences.getIsCaptureOrientationLocked()) {
-      _subscribeOrientationChangeStream();
-    }
+    // 固定为横向模式
+    _subscribeOrientationChangeStream();
 
     // 初始化LUT预览管理器
     _initializeLutPreviewManager();
@@ -201,33 +194,12 @@ class _CameraPageState extends State<CameraPage>
   }*/
 
   void _subscribeOrientationChangeStream() {
-    NativeDeviceOrientationCommunicator nativeDeviceOrientationCommunicator =
-        NativeDeviceOrientationCommunicator();
-    Stream<NativeDeviceOrientation> onOrientationChangedStream =
-        nativeDeviceOrientationCommunicator.onOrientationChanged(
-            useSensor: true);
-
-    onOrientationChangedStream.listen((event) {
-      Future<NativeDeviceOrientation> orientation =
-          nativeDeviceOrientationCommunicator.orientation(useSensor: true);
-
-      _timeOfLastChange = DateTime.now();
-      Future.delayed(const Duration(milliseconds: 500), () async {
-        if (DateTime.now().difference(_timeOfLastChange).inMilliseconds > 500) {
-          if (await orientation == NativeDeviceOrientation.portraitUp) {
-            await SystemChrome.setPreferredOrientations(
-                [DeviceOrientation.portraitUp]);
-          } else if (await orientation ==
-              NativeDeviceOrientation.landscapeLeft) {
-            await SystemChrome.setPreferredOrientations(
-                [DeviceOrientation.landscapeLeft]);
-          } else if (await orientation ==
-              NativeDeviceOrientation.landscapeRight) {
-            await SystemChrome.setPreferredOrientations(
-                [DeviceOrientation.landscapeRight]);
-          }
-        }
-      });
+    // 固定为横向模式，不再根据设备方向变化
+    Future.delayed(const Duration(milliseconds: 100), () async {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight
+      ]);
     });
   }
 
@@ -320,6 +292,23 @@ class _CameraPageState extends State<CameraPage>
     final CameraController? cameraController = controller;
 
     if (cameraController != null && cameraController.value.isInitialized) {
+      // 获取屏幕详细信息
+      final size = MediaQuery.sizeOf(context);                    // 逻辑分辨率：dp
+      final dpr = MediaQuery.devicePixelRatioOf(context);         // 设备像素比
+      final px = Size(size.width * dpr, size.height * dpr);       // 物理分辨率：px
+      final ar = size.aspectRatio;                                // 宽高比
+      final pads = MediaQuery.viewPaddingOf(context);            // 刘海/系统条安全区
+
+      // 计算可用空间（扣除安全区域）
+      final availableWidth = size.width;
+      final availableHeight = size.height - pads.top - pads.bottom;
+      
+      debugPrint('[Camera] Logical size: ${size.width}x${size.height} dp');
+      debugPrint('[Camera] Physical size: ${px.width}x${px.height} px (DPR: $dpr)');
+      debugPrint('[Camera] Aspect ratio: $ar');
+      debugPrint('[Camera] Safe area padding: top=${pads.top}, bottom=${pads.bottom}');
+      debugPrint('[Camera] Available space: ${availableWidth}x$availableHeight dp');
+      
       return Center(
         child: Listener(
           onPointerDown: (_) => _pointers++,
@@ -331,16 +320,20 @@ class _CameraPageState extends State<CameraPage>
               return LutPreviewManager.instance.createPreviewWidget(
                 cameraController,
                 isRearCamera: isRearCameraSelected,
-                child: LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    return GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onScaleStart: _handleScaleStart,
-                      onScaleUpdate: _handleScaleUpdate,
-                      onTapDown: (TapDownDetails details) =>
-                          _onViewFinderTap(details, constraints),
-                    );
-                  },
+                screenWidth: availableWidth,
+                screenHeight: availableHeight,
+                physicalWidth: px.width,
+                physicalHeight: px.height,
+                devicePixelRatio: dpr,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onScaleStart: _handleScaleStart,
+                  onScaleUpdate: _handleScaleUpdate,
+                  onTapDown: (TapDownDetails details) =>
+                      _onViewFinderTap(details, BoxConstraints(
+                        maxWidth: availableWidth,
+                        maxHeight: availableHeight,
+                      )),
                 ),
               );
             },
@@ -353,8 +346,7 @@ class _CameraPageState extends State<CameraPage>
   }
 
   Widget _topControlsWidget() {
-    final leftHandedMode = Preferences.getLeftHandedMode() &&
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final leftHandedMode = Preferences.getLeftHandedMode();
 
     final left = leftHandedMode ? null : 0.0;
     final right = leftHandedMode ? 0.0 : null;
@@ -362,14 +354,10 @@ class _CameraPageState extends State<CameraPage>
     return Positioned(
       top: 0,
       left: left,
-      right: MediaQuery.of(context).orientation == Orientation.portrait
-          ? 0
-          : right,
-      bottom:
-          MediaQuery.of(context).orientation == Orientation.portrait ? null : 0,
+      right: right,
+      bottom: 0,
       child: RotatedBox(
-        quarterTurns:
-            MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 3,
+        quarterTurns: 3,
         child: Container(
           color: Colors.black12,
           child: Row(
@@ -399,26 +387,18 @@ class _CameraPageState extends State<CameraPage>
   }
 
   Widget _zoomWidget(context) {
-    final leftHandedMode = Preferences.getLeftHandedMode() &&
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final leftHandedMode = Preferences.getLeftHandedMode();
 
     final left = leftHandedMode ? null : 0.0;
     final right = leftHandedMode ? 0.0 : null;
 
     return Positioned(
-      top:
-          MediaQuery.of(context).orientation == Orientation.portrait ? 0 : null,
-      right: MediaQuery.of(context).orientation == Orientation.portrait
-          ? 0
-          : right,
-      left: MediaQuery.of(context).orientation == Orientation.portrait
-          ? null
-          : left,
-      bottom:
-          MediaQuery.of(context).orientation == Orientation.portrait ? null : 0,
+      top: null,
+      right: right,
+      left: left,
+      bottom: 0,
       child: RotatedBox(
-        quarterTurns:
-            MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 3,
+        quarterTurns: 3,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -431,10 +411,7 @@ class _CameraPageState extends State<CameraPage>
               if (!leftHandedMode) const SizedBox(height: 64.0),
               if (Preferences.getEnableZoomSlider())
                 RotatedBox(
-                    quarterTurns: MediaQuery.of(context).orientation ==
-                            Orientation.portrait
-                        ? 0
-                        : 2,
+                    quarterTurns: 2,
                     child: _zoomSlider(update: false)),
               if (leftHandedMode) const SizedBox(height: 64.0),
             ],
@@ -447,8 +424,7 @@ class _CameraPageState extends State<CameraPage>
   Widget _settingsWidget({required bool enabled}) {
     return AnimatedRotation(
       duration: const Duration(milliseconds: 400),
-      turns:
-          MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 0.25,
+      turns: 0.25,
       child: SettingsButton(
         onPressed: enabled
             ? () {
@@ -475,9 +451,7 @@ class _CameraPageState extends State<CameraPage>
         ? const SizedBox(height: 60, width: 60)
         : AnimatedRotation(
             duration: const Duration(milliseconds: 400),
-            turns: MediaQuery.of(context).orientation == Orientation.portrait
-                ? 0
-                : 0.25,
+            turns: 0.25,
             child: Tooltip(
               message: AppLocalizations.of(context)!.openCapturedPictureOrVideo,
               child: Padding(
@@ -510,8 +484,7 @@ class _CameraPageState extends State<CameraPage>
   }
 
   Widget _bottomControlsWidget() {
-    final leftHandedMode = Preferences.getLeftHandedMode() &&
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final leftHandedMode = Preferences.getLeftHandedMode();
 
     final cameraControls = <Widget>[
       if (Preferences.getEnableModeRow()) _cameraModesWidget(),
@@ -555,8 +528,7 @@ class _CameraPageState extends State<CameraPage>
     ];
 
     return RotatedBox(
-      quarterTurns:
-          MediaQuery.of(context).orientation == Orientation.portrait ? 0 : 3,
+      quarterTurns: 3,
       child: Column(
         mainAxisAlignment:
             leftHandedMode ? MainAxisAlignment.start : MainAxisAlignment.end,

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
@@ -16,6 +15,12 @@ class GpuLutPreview extends StatefulWidget {
   final double mixStrength;
   final Widget? child;
   final bool isRearCamera;
+  // Screen size parameters for scaling
+  final double? screenWidth;     // 逻辑像素宽度 (dp)
+  final double? screenHeight;    // 逻辑像素高度 (dp)
+  final double? physicalWidth;   // 物理像素宽度 (px)
+  final double? physicalHeight;  // 物理像素高度 (px)
+  final double? devicePixelRatio; // 设备像素比
   // Color conversion options
   final GpuYuvMode yuvMode; // BT.709 full by default
   final bool swapUV;        // false by default
@@ -33,6 +38,11 @@ class GpuLutPreview extends StatefulWidget {
     required this.mixStrength,
     this.child,
     this.isRearCamera = true,
+    this.screenWidth,
+    this.screenHeight,
+    this.physicalWidth,
+    this.physicalHeight,
+    this.devicePixelRatio,
     this.yuvMode = GpuYuvMode.bt709Full,
     this.swapUV = false,
     this.lutTilesX,
@@ -358,10 +368,30 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
     final rotationRad = _computeRotation(isPortrait);
     final mirror = !widget.isRearCamera;
 
+    // 计算画布尺寸：优先使用物理分辨率，其次逻辑分辨率，最后回退到相机源尺寸
+    double canvasWidth = _srcW.toDouble();
+    double canvasHeight = _srcH.toDouble();
+    
+    if (widget.physicalWidth != null && widget.physicalHeight != null) {
+      // 使用物理分辨率（像素级精确）
+      canvasWidth = widget.physicalWidth!;
+      canvasHeight = widget.physicalHeight!;
+      
+      debugPrint('[GPU] Using physical resolution: ${canvasWidth}x$canvasHeight px (DPR: ${widget.devicePixelRatio ?? 'unknown'})');
+    } else if (widget.screenWidth != null && widget.screenHeight != null) {
+      // 回退到逻辑分辨率
+      canvasWidth = widget.screenWidth!;
+      canvasHeight = widget.screenHeight!;
+      
+      debugPrint('[GPU] Using logical resolution: ${canvasWidth}x$canvasHeight dp');
+    } else {
+      debugPrint('[GPU] Using camera source resolution: ${canvasWidth}x$canvasHeight px');
+    }
+
     // 构建基础绘制
     Widget content = SizedBox(
-      width: _srcW.toDouble(),
-      height: _srcH.toDouble(),
+      width: canvasWidth,
+      height: canvasHeight,
       child: CustomPaint(
         painter: _GpuLutPainter(
           program: _program!,
@@ -410,7 +440,19 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
 
     // 最后进行一次 cover-fit 映射，填充至父级区域
     Widget overlay;
-    if (isPortrait) {
+    
+    // 如果提供了屏幕尺寸，直接使用已计算好的画布尺寸，无需额外缩放
+    if (widget.screenWidth != null && widget.screenHeight != null) {
+      overlay = ClipRect(
+        child: OverflowBox(
+          minWidth: 0,
+          minHeight: 0,
+          maxWidth: double.infinity,
+          maxHeight: double.infinity,
+          child: content,
+        ),
+      );
+    } else if (isPortrait) {
       // 竖屏模式：使用FittedBox确保正确缩放
       overlay = FittedBox(
         fit: BoxFit.cover,

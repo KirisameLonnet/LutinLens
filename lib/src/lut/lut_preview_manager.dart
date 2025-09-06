@@ -67,6 +67,11 @@ class LutPreviewManager extends ChangeNotifier {
   Widget createPreviewWidget(
     CameraController cameraController, {
     bool isRearCamera = true,
+    double? screenWidth,
+    double? screenHeight,
+    double? physicalWidth,
+    double? physicalHeight,
+    double? devicePixelRatio,
     Widget? child,
   }) {
     // 始终使用 CameraPreview 作为基础，LUT 以 overlay 子层叠加，
@@ -81,24 +86,44 @@ class LutPreviewManager extends ChangeNotifier {
         lutPath: _currentLutPath!,
         mixStrength: _mixStrength,
         isRearCamera: isRearCamera,
+        screenWidth: screenWidth,
+        screenHeight: screenHeight,
+        physicalWidth: physicalWidth,
+        physicalHeight: physicalHeight,
+        devicePixelRatio: devicePixelRatio,
       );
     }
 
     // 若启用 LUT：隐藏原生相机画布，仅渲染 LUT 结果，避免双层渲染导致比例不一致
     if (_isEnabled && _currentLutPath != null) {
       debugPrint('[LUT] Rendering LUT-only (hide native preview)');
-      // Use CameraValue.aspectRatio to match CameraPreview behavior exactly
-      final aspect = cameraController.value.aspectRatio;
-      return AspectRatio(
-        aspectRatio: aspect,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            overlay,
-            if (child != null) child,
-          ],
-        ),
-      );
+      // 使用屏幕尺寸而不是相机宽高比来填充屏幕
+      if (screenWidth != null && screenHeight != null) {
+        return SizedBox(
+          width: screenWidth,
+          height: screenHeight,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              overlay,
+              if (child != null) child,
+            ],
+          ),
+        );
+      } else {
+        // 回退到原有逻辑
+        final aspect = cameraController.value.aspectRatio;
+        return AspectRatio(
+          aspectRatio: aspect,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              overlay,
+              if (child != null) child,
+            ],
+          ),
+        );
+      }
     }
 
     // 未启用 LUT：渲染原生 CameraPreview（与上游保持一致）
