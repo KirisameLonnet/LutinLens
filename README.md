@@ -1,5 +1,4 @@
-# LutinLens
-
+<h1 align="center">LutinLens</h1>
 <div align="center">
 
 *AI驱动的智能相机应用，重视摄影前期调整，减少后期负担，基于LibreCamera优化开发*
