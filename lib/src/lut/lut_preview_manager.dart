@@ -15,8 +15,8 @@ class LutPreviewManager extends ChangeNotifier {
   bool _isEnabled = true;
   
   // 使用函数回调而不是直接引用来避免循环依赖
-  Function()? _stopStreamCallback;
-  Function()? _resumeStreamCallback;
+  Future<void> Function()? _stopStreamCallback;
+  Future<void> Function()? _resumeStreamCallback;
 
   String? get currentLutPath => _currentLutPath;
   double get mixStrength => _mixStrength;
@@ -129,7 +129,7 @@ class LutPreviewManager extends ChangeNotifier {
   }
 
   /// 注册流控制回调（由预览层调用，可选）
-  void registerStreamCallbacks(Function() stopCallback, Function() resumeCallback) {
+  void registerStreamCallbacks(Future<void> Function() stopCallback, Future<void> Function() resumeCallback) {
     _stopStreamCallback = stopCallback;
     _resumeStreamCallback = resumeCallback;
   }
@@ -154,7 +154,7 @@ class LutPreviewManager extends ChangeNotifier {
   /// 停止图像流（在拍照/录制前调用）
   Future<void> stopImageStream() async {
     try {
-      _stopStreamCallback?.call();
+      await _stopStreamCallback?.call();
     } catch (e) {
       debugPrint('停止图像流时出错: $e');
     }
@@ -163,7 +163,7 @@ class LutPreviewManager extends ChangeNotifier {
   /// 恢复图像流（在拍照/录制后调用）
   Future<void> resumeImageStream() async {
     try {
-      _resumeStreamCallback?.call();
+      await _resumeStreamCallback?.call();
     } catch (e) {
       debugPrint('恢复图像流时出错: $e');
     }

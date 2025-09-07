@@ -30,7 +30,7 @@ import 'package:librecamera/src/lut/software_lut_processor.dart';
 import 'package:librecamera/src/lut/gpu_lut_still_renderer.dart';
 import 'package:librecamera/src/widgets/lut_controls.dart';
 import 'package:librecamera/src/services/ai_suggestion_service.dart';
-import 'package:librecamera/src/widgets/gallery_widget.dart';
+// import 'package:librecamera/src/widgets/gallery_widget.dart'; // Removed: file not present; using _buildThumbnailWidget instead
 
 /// Camera example home widget.
 class CameraPage extends StatefulWidget {
@@ -164,22 +164,31 @@ class _CameraPageState extends State<CameraPage>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     final CameraController? cameraController = controller;
 
-    if (cameraController == null || !cameraController.value.isInitialized) {
+    if (state == AppLifecycleState.inactive) {
+      // 应用进入非活动：停止图像流并释放控制器
+      await LutPreviewManager.instance.stopImageStream();
+      try {
+        await cameraController?.dispose();
+      } catch (_) {}
+      controller = null;
       return;
     }
 
-    if (state == AppLifecycleState.inactive) {
-      // 停止图像流
-      LutPreviewManager.instance.stopImageStream();
-      cameraController.dispose();
-      controller = null; // Set to null after disposing
-      //qrController?.pauseCamera();
-    } else if (state == AppLifecycleState.resumed) {
-      _initializeCameraController(cameraController.description);
-      //qrController?.resumeCamera();
+    if (state == AppLifecycleState.resumed) {
+      // 返回前台：如果控制器为空，按当前摄像头偏好重新初始化；否则恢复图像流
+      if (controller == null) {
+        final CameraDescription desc = cameras[isRearCameraSelected ? 0 : 1];
+        await _initializeCameraController(desc);
+      } else if (!(controller!.value.isInitialized)) {
+        final CameraDescription desc = cameras[isRearCameraSelected ? 0 : 1];
+        await _initializeCameraController(desc);
+      } else {
+        await LutPreviewManager.instance.resumeImageStream();
+      }
+      return;
     }
   }
 
@@ -260,9 +269,12 @@ class _CameraPageState extends State<CameraPage>
                 if (Preferences.getEnableModeRow())
                   Positioned(
                     top: 16,
-                    left: 16,
-                    right: 16,
-                    child: _buildModeSelector(),
+                    left: 0,
+                    right: 0,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: _buildModeSelector(),
+                    ),
                   ),
                 
                 // 底部曝光滑块（如果启用）
@@ -409,11 +421,11 @@ class _CameraPageState extends State<CameraPage>
               : null,
           ),
           
-          // 相册按钮
-          Container(
-            width: 48,
-            height: 48,
-            child: GalleryWidget(),
+          // 相册/缩略图按钮（替代缺失的 GalleryWidget）
+          SizedBox(
+            width: 56,
+            height: 56,
+            child: _buildThumbnailWidget(),
           ),
           
           // 拍照按钮（中间）
@@ -488,22 +500,30 @@ class _CameraPageState extends State<CameraPage>
   }
 
   Widget _buildModeSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ExposureModeControlWidget(controller: controller),
-          const SizedBox(width: 16),
-          FocusModeControlWidget(controller: controller),
-          const SizedBox(width: 16),
-          const LutControlWidget(),
-        ],
+    return FractionalTranslation(
+      // 先居中后，基于自身宽度向右平移 20%
+      translation: const Offset(0.2, 0.0),
+      child: Transform.scale(
+        scale: 0.7, // 略微放大（相对原始的 80%）
+        alignment: Alignment.topCenter,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ExposureModeControlWidget(controller: controller),
+              const SizedBox(width: 16),
+              FocusModeControlWidget(controller: controller),
+              const SizedBox(width: 16),
+              const LutControlWidget(),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -966,6 +986,27 @@ class _CameraPageState extends State<CameraPage>
       return null;
     }
 
+    // 立即给予拍照反馈，减少感知延迟
+    if (mounted) {
+      setState(() {
+        takingPicture = true;
+      });
+    }
+
+    // 尝试临时锁定对焦/曝光，避免拍照前的再对焦/测光引起延迟
+    final prevFocusMode = cameraController.value.focusMode;
+    final prevExposureMode = cameraController.value.exposureMode;
+    try {
+      if (prevFocusMode == FocusMode.auto) {
+        await cameraController.setFocusMode(FocusMode.locked);
+      }
+      if (prevExposureMode == ExposureMode.auto) {
+        await cameraController.setExposureMode(ExposureMode.locked);
+      }
+    } catch (e) {
+      debugPrint('[Capture] 临时锁定对焦/曝光失败: $e');
+    }
+
     // 停止图像流以避免冲突，并记录耗时以排查延迟
     final Stopwatch sw = Stopwatch()..start();
     await LutPreviewManager.instance.stopImageStream();
@@ -1001,8 +1042,6 @@ class _CameraPageState extends State<CameraPage>
       final XFile file = await cameraController.takePicture();
       final t1 = DateTime.now();
       debugPrint('[Capture] takePicture() took: ${t1.difference(t0).inMilliseconds} ms');
-      takingPicture = true;
-
       if (!Preferences.getDisableShutterSound() && !playedShutter) {
         var methodChannel = AndroidMethodChannel();
         methodChannel.shutterSound();
@@ -1114,20 +1153,54 @@ class _CameraPageState extends State<CameraPage>
 
       await File(file.path).delete();
 
-      // 恢复图像流
+      // 恢复图像流（等待相机会话稳定后再恢复）
+      await Future.delayed(const Duration(milliseconds: 80));
       await LutPreviewManager.instance.resumeImageStream();
+      // 恢复对焦/曝光模式
+      await _restoreAeAfModes(cameraController, prevFocusMode, prevExposureMode);
 
       return file;
     } on CameraException catch (e) {
       debugPrint('$e: ${e.description}');
       // 即使发生错误也要恢复图像流
       await LutPreviewManager.instance.resumeImageStream();
+      // 恢复对焦/曝光模式
+      _restoreAeAfModes(cameraController, prevFocusMode, prevExposureMode);
+      if (mounted) {
+        setState(() {
+          takingPicture = false;
+        });
+      } else {
+        takingPicture = false;
+      }
       return null;
     } catch (e) {
       debugPrint('拍照时发生未知错误: $e');
       // 即使发生错误也要恢复图像流
       await LutPreviewManager.instance.resumeImageStream();
+      // 恢复对焦/曝光模式
+      _restoreAeAfModes(cameraController, prevFocusMode, prevExposureMode);
+      if (mounted) {
+        setState(() {
+          takingPicture = false;
+        });
+      } else {
+        takingPicture = false;
+      }
       return null;
+    }
+  }
+
+  Future<void> _restoreAeAfModes(CameraController cameraController, FocusMode prevFocusMode, ExposureMode prevExposureMode) async {
+    try {
+      if (cameraController.value.focusMode != prevFocusMode) {
+        await cameraController.setFocusMode(prevFocusMode);
+      }
+      if (cameraController.value.exposureMode != prevExposureMode) {
+        await cameraController.setExposureMode(prevExposureMode);
+      }
+    } catch (e) {
+      debugPrint('[Capture] 恢复对焦/曝光模式失败: $e');
     }
   }
 

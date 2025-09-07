@@ -155,6 +155,7 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
     if (!widget.cameraController.value.isInitialized) return;
     if (widget.mixStrength <= 0.0) return;
     try {
+      _stopRequested = false; // allow processing frames again
       widget.cameraController.startImageStream((image) async {
         if (_isProcessing) return;
         _isProcessing = true;
@@ -182,6 +183,7 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
     _uvImage?.dispose();
     _yImage = null;
     _uvImage = null;
+    if (mounted) setState(() {}); // 刷新UI，避免使用已释放的图像绘制
   }
 
   Future<void> _processFrame(CameraImage image) async {
@@ -478,58 +480,62 @@ class _GpuLutPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final fs = program.fragmentShader();
-    // Samplers order: uY (0), uUV (1), uLut2D (2)
-    fs.setImageSampler(0, yImage);
-    fs.setImageSampler(1, uvImage);
-    fs.setImageSampler(2, lutImage);
-    // Float uniforms order must match shader declarations exactly:
-    // 0:uSize, 1:uMix, 2:uMode, 3:uSwapUV, 4:uLutW, 5:uLutH, 6:uTilesX, 7:uTilesY,
-    // 8:uFlipY, 9:uDstW, 10:uDstH, 11:uSrcW, 12:uSrcH, 13:uUvW, 14:uUvH
-    final int inferredSize = lutSize ?? lutImage.height; // our pack defaults
-    final double lutSizeValue = inferredSize.toDouble();
+    try {
+      final fs = program.fragmentShader();
+      // Samplers order: uY (0), uUV (1), uLut2D (2)
+      fs.setImageSampler(0, yImage);
+      fs.setImageSampler(1, uvImage);
+      fs.setImageSampler(2, lutImage);
+      // Float uniforms order must match shader declarations exactly:
+      // 0:uSize, 1:uMix, 2:uMode, 3:uSwapUV, 4:uLutW, 5:uLutH, 6:uTilesX, 7:uTilesY,
+      // 8:uFlipY, 9:uDstW, 10:uDstH, 11:uSrcW, 12:uSrcH, 13:uUvW, 14:uUvH
+      final int inferredSize = lutSize ?? lutImage.height; // our pack defaults
+      final double lutSizeValue = inferredSize.toDouble();
 
-    // Infer atlas tiling if not provided
-    double tilesX;
-    double tilesY;
-    if (lutTilesX != null && lutTilesY != null) {
-      tilesX = lutTilesX!.toDouble();
-      tilesY = lutTilesY!.toDouble();
-    } else {
-      // Common layouts:
-      // 1) Our pack: width = N*N, height = N  => tilesX=N, tilesY=1
-      // 2) Square atlas: width == height and divisible by N => tilesX=tilesY=width/N
-      if (lutImage.width == inferredSize * inferredSize && lutImage.height == inferredSize) {
-        tilesX = inferredSize.toDouble();
-        tilesY = 1.0;
-      } else if (lutImage.width == lutImage.height && (lutImage.width % inferredSize == 0)) {
-        final t = (lutImage.width ~/ inferredSize).toDouble();
-        tilesX = t;
-        tilesY = t;
+      // Infer atlas tiling if not provided
+      double tilesX;
+      double tilesY;
+      if (lutTilesX != null && lutTilesY != null) {
+        tilesX = lutTilesX!.toDouble();
+        tilesY = lutTilesY!.toDouble();
       } else {
-        // Fallback to a conservative default (treat as our pack)
-        tilesX = inferredSize.toDouble();
-        tilesY = 1.0;
+        // Common layouts:
+        // 1) Our pack: width = N*N, height = N  => tilesX=N, tilesY=1
+        // 2) Square atlas: width == height and divisible by N => tilesX=tilesY=width/N
+        if (lutImage.width == inferredSize * inferredSize && lutImage.height == inferredSize) {
+          tilesX = inferredSize.toDouble();
+          tilesY = 1.0;
+        } else if (lutImage.width == lutImage.height && (lutImage.width % inferredSize == 0)) {
+          final t = (lutImage.width ~/ inferredSize).toDouble();
+          tilesX = t;
+          tilesY = t;
+        } else {
+          // Fallback to a conservative default (treat as our pack)
+          tilesX = inferredSize.toDouble();
+          tilesY = 1.0;
+        }
       }
-    }
 
-    fs.setFloat(0, lutSizeValue);
-    fs.setFloat(1, mix);
-    fs.setFloat(2, yuvMode == GpuYuvMode.bt709Full ? 0.0 : 1.0);
-    fs.setFloat(3, swapUV ? 1.0 : 0.0);
-    fs.setFloat(4, lutImage.width.toDouble());
-    fs.setFloat(5, lutImage.height.toDouble());
-    fs.setFloat(6, tilesX);
-    fs.setFloat(7, tilesY);
-    fs.setFloat(8, flipLutY ? 1.0 : 0.0);
-    fs.setFloat(9, size.width);
-    fs.setFloat(10, size.height);
-    fs.setFloat(11, srcW.toDouble());
-    fs.setFloat(12, srcH.toDouble());
-    fs.setFloat(13, uvW.toDouble());
-    fs.setFloat(14, uvH.toDouble());
-    final paint = Paint()..shader = fs;
-    canvas.drawRect(Offset.zero & size, paint);
+      fs.setFloat(0, lutSizeValue);
+      fs.setFloat(1, mix);
+      fs.setFloat(2, yuvMode == GpuYuvMode.bt709Full ? 0.0 : 1.0);
+      fs.setFloat(3, swapUV ? 1.0 : 0.0);
+      fs.setFloat(4, lutImage.width.toDouble());
+      fs.setFloat(5, lutImage.height.toDouble());
+      fs.setFloat(6, tilesX);
+      fs.setFloat(7, tilesY);
+      fs.setFloat(8, flipLutY ? 1.0 : 0.0);
+      fs.setFloat(9, size.width);
+      fs.setFloat(10, size.height);
+      fs.setFloat(11, srcW.toDouble());
+      fs.setFloat(12, srcH.toDouble());
+      fs.setFloat(13, uvW.toDouble());
+      fs.setFloat(14, uvH.toDouble());
+      final paint = Paint()..shader = fs;
+      canvas.drawRect(Offset.zero & size, paint);
+    } catch (_) {
+      // 在偶发竞态下（图像刚被释放），优雅跳过本帧绘制
+    }
   }
 
   @override
