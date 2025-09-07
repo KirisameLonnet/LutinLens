@@ -4,14 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:librecamera/src/pages/camera_page.dart';
 import 'package:librecamera/src/utils/preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:librecamera/src/utils/color_compat.dart';
 
 import '../../l10n/app_localizations.dart';
 
-import '../app.dart';
-import '../provider/theme_provider.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({Key? key}) : super(key: key);

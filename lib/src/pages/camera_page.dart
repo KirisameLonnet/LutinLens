@@ -477,12 +477,7 @@ class _CameraPageState extends State<CameraPage>
   }
 
   // 垂直的LUT控制组件 - 减小高度适应分布式布局
-  Widget _buildVerticalLutControl() {
-    return const SizedBox(
-      height: 60,  // 从100减小到60避免溢出
-      child: LutControlWidget(),
-    );
-  }
+  // Removed unused: _buildVerticalLutControl()
 
   void _navigateToSettings() {
     _stopVolumeButtons();
@@ -614,110 +609,11 @@ class _CameraPageState extends State<CameraPage>
     );
   }
 
-  Widget _buildCameraSwitchButton() {
-    return GestureDetector(
-      onTap: () {
-        onNewCameraSelected(
-            cameras[isRearCameraSelected ? 1 : 0]);
-        setIsRearCameraSelected();
-      },
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-              color: Colors.black.withValues(alpha: 0.5),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-        child: Icon(
-          isRearCameraSelected 
-            ? Icons.camera_front_outlined 
-            : Icons.camera_rear_outlined,
-          color: Colors.white,
-          size: 24,
-        ),
-      ),
-    );
-  }
+  // Removed unused: _buildCameraSwitchButton()
 
-  Widget _topControlsWidget() {
-    final leftHandedMode = Preferences.getLeftHandedMode();
+  // Removed unused: _topControlsWidget()
 
-    final left = leftHandedMode ? null : 0.0;
-    final right = leftHandedMode ? 0.0 : null;
-
-    return Positioned(
-      top: 0,
-      left: left,
-      right: right,
-      bottom: 0,
-      child: RotatedBox(
-        quarterTurns: 3,
-        child: Container(
-          color: Colors.black12,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              TimerButton(enabled: _timerStopwatch.elapsedTicks <= 1),
-              FlashModeWidget(
-                controller: controller,
-                isRearCameraSelected: isRearCameraSelected,
-                isVideoCameraSelected: false,
-              ),
-              ResolutionButton(
-                isDense: true,
-                onNewCameraSelected: _initializeCameraController,
-                isRearCameraSelected: isRearCameraSelected,
-                enabled: _timerStopwatch.elapsedTicks <= 1,
-              ),
-              // 已移除：LUT 选择按钮（后续重构）
-              _settingsWidget(
-                enabled: _timerStopwatch.elapsedTicks <= 1,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _zoomWidget(context) {
-    final leftHandedMode = Preferences.getLeftHandedMode();
-
-    final left = leftHandedMode ? null : 0.0;
-    final right = leftHandedMode ? 0.0 : null;
-
-    return Positioned(
-      top: null,
-      right: right,
-      left: left,
-      bottom: 0,
-      child: RotatedBox(
-        quarterTurns: 3,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              //_settingsWidget(),
-              //_cameraSwitchWidget(),
-              //const SizedBox(height: 10.0),
-              //_thumbnailPreviewWidget(),
-              if (!leftHandedMode) const SizedBox(height: 64.0),
-              if (Preferences.getEnableZoomSlider())
-                RotatedBox(
-                    quarterTurns: 2,
-                    child: _zoomSlider(update: false)),
-              if (leftHandedMode) const SizedBox(height: 64.0),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // Removed unused: _zoomWidget()
 
   Widget _settingsWidget({required bool enabled}) {
     return AnimatedRotation(
@@ -781,60 +677,7 @@ class _CameraPageState extends State<CameraPage>
           );
   }
 
-  Widget _bottomControlsWidget() {
-    final leftHandedMode = Preferences.getLeftHandedMode();
-
-    final cameraControls = <Widget>[
-      if (Preferences.getEnableModeRow()) _cameraModesWidget(),
-      if (Preferences.getEnableModeRow()) const Divider(color: Colors.blue),
-      if (Preferences.getEnableExposureSlider())
-        ExposureSlider(
-          setExposureOffset: _setExposureOffset,
-          currentExposureOffset: _currentExposureOffset,
-          minAvailableExposureOffset: _minAvailableExposureOffset,
-          maxAvailableExposureOffset: _maxAvailableExposureOffset,
-        ),
-      if (Preferences.getEnableExposureSlider())
-        const Divider(color: Colors.blue),
-      // 已移除：旧的 LUT 预设/强度按钮与分割线
-      Container(
-        padding: const EdgeInsets.fromLTRB(0, 8.0, 0, 8.0),
-        child: CaptureControlWidget(
-          controller: controller,
-          onTakePictureButtonPressed: onTakePictureButtonPressed,
-          onNewCameraSelected: onNewCameraSelected,
-          /*flashWidget: FlashModeControlRowWidget(
-                controller: controller,
-                isRearCameraSelected: isRearCameraSelected,
-              ),*/
-          leadingWidget: _thumbnailPreviewWidget(),
-          isRearCameraSelected: getIsRearCameraSelected(),
-          setIsRearCameraSelected: setIsRearCameraSelected,
-        ),
-      ),
-    ];
-
-    final bottomControls = <Widget>[
-      Container(
-        color: Colors.black12,
-        child: Column(
-          children: leftHandedMode
-              ? cameraControls.reversed.toList()
-              : cameraControls,
-        ),
-      ),
-    ];
-
-    return RotatedBox(
-      quarterTurns: 3,
-      child: Column(
-        mainAxisAlignment:
-            leftHandedMode ? MainAxisAlignment.start : MainAxisAlignment.end,
-        children:
-            leftHandedMode ? bottomControls.reversed.toList() : bottomControls,
-      ),
-    );
-  }
+  // Removed unused: _bottomControlsWidget()
 
   Widget _cameraModesWidget() {
     return Row(
@@ -1344,7 +1187,7 @@ class _CameraPageState extends State<CameraPage>
       return;
     }
 
-    final tiffStart = exifHeaderStart + 6;
+    const tiffStart = exifHeaderStart + 6;
     if (exifApp1.length < tiffStart + 8) return;
     final littleEndian =
         (exifApp1[tiffStart] == 0x49 && exifApp1[tiffStart + 1] == 0x49);
@@ -1608,7 +1451,7 @@ class _CameraPageState extends State<CameraPage>
             // 获取屏幕尺寸
             final screenSize = MediaQuery.of(context).size;
             const componentWidth = 220.0;
-            const componentHeight = 140.0;
+            const componentHeight = 160.0; // 增加高度以容纳更多内容
             
             // 更新位置，确保不会超出屏幕边界
             _aiWidgetX = (_aiWidgetX + details.delta.dx).clamp(
@@ -1639,7 +1482,7 @@ class _CameraPageState extends State<CameraPage>
             
             return Container(
               width: 220,
-              height: 140,
+              height: 160, // 增加高度以容纳更多内容
               decoration: BoxDecoration(
                 color: backgroundColor,
                 borderRadius: BorderRadius.circular(12), // 圆角
@@ -1717,55 +1560,101 @@ class _CameraPageState extends State<CameraPage>
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // LUT建议
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.palette,
-                                    color: Colors.blue.withValues(alpha: 0.8),
-                                    size: 14,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      _aiService.currentLutSuggestion,
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.8),
-                                        fontSize: 10,
-                                        height: 1.2,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                              // LUT建议（只在有内容时显示）
+                              if (_aiService.currentLutSuggestion.isNotEmpty) ...[
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      Icons.palette,
+                                      color: Colors.blue.withValues(alpha: 0.8),
+                                      size: 14,
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              // 取景建议
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.camera_alt,
-                                    color: Colors.orange.withValues(alpha: 0.8),
-                                    size: 14,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      _aiService.currentFramingSuggestion,
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.8),
-                                        fontSize: 10,
-                                        height: 1.2,
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _aiService.currentLutSuggestion,
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.8),
+                                              fontSize: 12, // 从10调大到12
+                                              height: 1.2,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          // 如果有LUT推荐值，显示应用按钮
+                                          if (_aiService.currentLutValue != null && 
+                                              _aiService.currentLutValue!.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 2.0),
+                                              child: GestureDetector(
+                                                onTap: () async {
+                                                  final success = await _aiService.applyRecommendedLut();
+                                                  if (success) {
+                                                    showSnackbar(text: 'LUT已应用: ${_aiService.currentLutValue}');
+                                                  } else {
+                                                    showSnackbar(text: '应用LUT失败');
+                                                  }
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 6.0,
+                                                    vertical: 2.0,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.blue.withValues(alpha: 0.2),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    border: Border.all(
+                                                      color: Colors.blue.withValues(alpha: 0.5),
+                                                      width: 0.5,
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    '应用',
+                                                    style: TextStyle(
+                                                      color: Colors.blue.withValues(alpha: 0.9),
+                                                      fontSize: 10, // 从8调大到10
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                              ],
+                              // 取景建议（只在有内容时显示）
+                              if (_aiService.currentFramingSuggestion.isNotEmpty)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.orange.withValues(alpha: 0.8),
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        _aiService.currentFramingSuggestion,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.8),
+                                          fontSize: 12, // 从10调大到12
+                                          height: 1.2,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                     ),

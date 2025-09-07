@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:librecamera/src/utils/preferences.dart';
 import '../../l10n/app_localizations.dart';
-import 'package:librecamera/src/utils/color_compat.dart';
 
 class TimerButton extends StatefulWidget {
   const TimerButton({

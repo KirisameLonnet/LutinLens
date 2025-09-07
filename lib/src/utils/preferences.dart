@@ -182,13 +182,13 @@ class Preferences {
   static Future setAiLutSuggestionUrl(String url) async =>
       await _preferences!.setString(prefAiLutSuggestionUrl, url);
   static String getAiLutSuggestionUrl() =>
-      _preferences!.getString(prefAiLutSuggestionUrl) ?? 'http://ryanssite.icu:8000/single/generate';
+      _preferences!.getString(prefAiLutSuggestionUrl) ?? 'http://ryanssite.icu:8000/generate';
 
   // AI取景建议URL
   static Future setAiFramingSuggestionUrl(String url) async =>
       await _preferences!.setString(prefAiFramingSuggestionUrl, url);
   static String getAiFramingSuggestionUrl() =>
-      _preferences!.getString(prefAiFramingSuggestionUrl) ?? 'http://ryanssite.icu:8001/single/generate';
+      _preferences!.getString(prefAiFramingSuggestionUrl) ?? 'http://ryanssite.icu:8001/generate';
 
   // AI服务器URL (保留用于向后兼容)
   static Future setAiServerUrl(String url) async =>

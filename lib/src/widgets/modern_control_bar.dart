@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import '../utils/preferences.dart';
 
 /// Modern Material 3 control bar for camera modes
 class ModernControlBar extends StatefulWidget {

@@ -14,7 +14,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:librecamera/src/utils/color_compat.dart';
+// Removed: unused color_compat import
 
 class SettingsButton extends StatelessWidget {
   const SettingsButton({
@@ -124,21 +124,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _aiServerUrlTile() {
-    return ListTile(
-      title: const Text('AI服务器地址'),
-      subtitle: Text(
-        Preferences.getAiServerUrl().isEmpty 
-          ? '未设置' 
-          : Preferences.getAiServerUrl(),
-      ),
-      trailing: const Icon(Icons.keyboard_arrow_right),
-      onTap: () {
-        _showAiServerUrlDialog();
-      },
-    );
-  }
-
   void _showAiImageUploadUrlDialog() {
     final TextEditingController controller = TextEditingController(
       text: Preferences.getAiImageUploadUrl(),
@@ -176,13 +161,15 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           FilledButton(
             onPressed: () async {
+              final navigator = Navigator.of(context);
               String url = controller.text.trim();
               if (url.isNotEmpty && !url.startsWith('http')) {
                 url = 'http://$url';
               }
               await Preferences.setAiImageUploadUrl(url);
+              if (!mounted) return;
               setState(() {});
-              Navigator.of(context).pop();
+              navigator.pop();
             },
             child: const Text('保存'),
           ),
@@ -228,13 +215,15 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           FilledButton(
             onPressed: () async {
+              final navigator = Navigator.of(context);
               String url = controller.text.trim();
               if (url.isNotEmpty && !url.startsWith('http')) {
                 url = 'http://$url';
               }
               await Preferences.setAiLutSuggestionUrl(url);
+              if (!mounted) return;
               setState(() {});
-              Navigator.of(context).pop();
+              navigator.pop();
             },
             child: const Text('保存'),
           ),
@@ -280,13 +269,15 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           FilledButton(
             onPressed: () async {
+              final navigator = Navigator.of(context);
               String url = controller.text.trim();
               if (url.isNotEmpty && !url.startsWith('http')) {
                 url = 'http://$url';
               }
               await Preferences.setAiFramingSuggestionUrl(url);
+              if (!mounted) return;
               setState(() {});
-              Navigator.of(context).pop();
+              navigator.pop();
             },
             child: const Text('保存'),
           ),
@@ -295,73 +286,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _showAiServerUrlDialog() {
-    final TextEditingController controller = TextEditingController(
-      text: Preferences.getAiServerUrl(),
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('设置AI服务器地址'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: '例如：https://ai.example.com 或 192.168.1.100:8080',
-            labelText: '服务器地址',
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.url,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              String url = controller.text.trim();
-              if (url.isNotEmpty && !url.startsWith('http')) {
-                url = 'http://$url';
-              }
-              await Preferences.setAiServerUrl(url);
-              setState(() {});
-              Navigator.of(context).pop();
-            },
-            child: const Text('保存'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _moreTile() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 32.0),
-      child: Column(
-        children: [
-          _useMaterial3Tile(),
-          const Divider(),
-          _captureOrientationLockedTile(),
-          const Divider(),
-          _showNavigationBarTile(),
-          const Divider(),
-          _onboardingScreenTile(),
-          const Divider(),
-          _aboutTile(),
-        ],
-      ),
-    );
-  }
-
-  Widget _headingTile(String text) {
-    return ListTile(
-      title: Text(
-        text,
-        style: style,
-      ),
-    );
-  }
 
   Widget _aboutListTile({String? version}) {
     void launchGitHubURL() async {

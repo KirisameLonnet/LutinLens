@@ -59,7 +59,7 @@ class ThemeProvider extends ChangeNotifier {
           ),
         ),
       ),
-      navigationBarTheme: NavigationBarThemeData(
+      navigationBarTheme: const NavigationBarThemeData(
         height: 64,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       ),

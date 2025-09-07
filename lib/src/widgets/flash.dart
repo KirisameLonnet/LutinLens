@@ -1,8 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:librecamera/src/utils/preferences.dart';
-import '../../l10n/app_localizations.dart';
-import 'package:librecamera/src/utils/color_compat.dart';
+// Removed unused imports
 
 class FlashModeWidget extends StatefulWidget {
   const FlashModeWidget({

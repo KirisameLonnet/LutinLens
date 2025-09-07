@@ -1,9 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import '../../l10n/app_localizations.dart';
 import 'package:librecamera/main.dart';
-import 'package:librecamera/src/utils/color_compat.dart';
 
 class CaptureControlWidget extends StatefulWidget {
   const CaptureControlWidget({
