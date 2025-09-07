@@ -1,4 +1,4 @@
-# LutinLens
+<img width="1920" height="860" alt="image" src="https://github.com/user-attachments/assets/295ad1fc-edef-45d0-9195-ae981a099981" /># LutinLens
 
 <div align="center">
 
@@ -10,6 +10,8 @@
 
 **Sky Hackathon 2025 参赛项目**
 
+> 本仓库为本次作品的App源码部分，服务端源码也是该项目重要的一环。请见：[LutinServer](https://github.com/m0cal/lutinlens_server)
+
 </div>
 
 ## 📖 项目简介
@@ -17,13 +19,35 @@
 LutinLens 是一款基于 LibreCamera 内核优化的智能相机应用，前端采用 Flutter 构建跨平台 UI，后端基于 NVIDIA NeMo Agent Toolkit + MCP 协议 提供实时 AI 构图与 LUT 推荐能力。
 其目标是将传统相机的硬件拍摄体验与 AI 智能服务结合，形成实时构图建议 + GPU 加速风格化渲染的一体化解决方案。
 
-**[预留图片位置：应用主界面截图]**
-
+![jietu](https://private-user-images.githubusercontent.com/69973084/486522599-a2724871-8d59-4171-8f79-a6c1259ff3a4.jpg?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTcyNTgzNzksIm5iZiI6MTc1NzI1ODA3OSwicGF0aCI6Ii82OTk3MzA4NC80ODY1MjI1OTktYTI3MjQ4NzEtOGQ1OS00MTcxLThmNzktYTZjMTI1OWZmM2E0LmpwZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA5MDclMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwOTA3VDE1MTQzOVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTcxODRmMGYyZDQ0MTc2MGM1NGM4YzAyZjljYjZjOWFkYTc2NTZmMDU3NzE5NDBlM2Y3NTMwM2RmMmRkOGJmODYmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.AuPPAezsz1JMyHZsYnDWv0re9qJ7FagKwoAw1pYIl20)
+![jietu](https://private-user-images.githubusercontent.com/69973084/486522614-761ff78e-b91e-48ef-aafd-73644aedc6bd.jpg?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTcyNTgzNzksIm5iZiI6MTc1NzI1ODA3OSwicGF0aCI6Ii82OTk3MzA4NC80ODY1MjI2MTQtNzYxZmY3OGUtYjkxZS00OGVmLWFhZmQtNzM2NDRhZWRjNmJkLmpwZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA5MDclMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwOTA3VDE1MTQzOVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTFhY2E0NzI1ODllZDIwZmY2M2MzZGZiYzAzOGMzZDgwOTI4YmMyYTIxY2UzYjg5YmMzNDU2NzRmZDUyMWMyNGEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.GB8Tnktp9GH6IfP4bj2Ym9PBOUWHaALN-ymcdGSeDlo)
 ### 🌟 核心特性
 
 - **🎯 智能构图与 LUT 建议**: 基于 NVIDIA NeMo 框架的多 Agent 系统实时分析场景并提供构图及 LUT 套用建议
 - **🎨 GPU 加速 LUT 渲染**: 采用 GLSL 实现的 YUV 到 ARGB 转换和三线性插值算法，支持 .cube 文件格式的 LUT 滤镜
 - **📱 跨平台兼容**: 基于 Flutter 开发，主要针对 Android 平台优化，iOS 也可运行
+
+## 拍摄效果
+
+### 原相机图：
+![yuantu](https://private-user-images.githubusercontent.com/69973084/486522175-8975685b-c9f3-4bbb-90af-2421d376d787.jpg?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTcyNTgzNzksIm5iZiI6MTc1NzI1ODA3OSwicGF0aCI6Ii82OTk3MzA4NC80ODY1MjIxNzUtODk3NTY4NWItYzlmMy00YmJiLTkwYWYtMjQyMWQzNzZkNzg3LmpwZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA5MDclMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwOTA3VDE1MTQzOVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWE2NzU0Y2NiM2RmZGJiMGRjODY4YmZkYzJjYjVlNmMwNDc4N2QyODU5Mjc2M2U1NTQyMzI2OWM5ODBjZmVmZDImWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.jxfM1mkAx5ctatjlY6mFqAbWuBQP8zHhsOolS4rvVSI)
+
+### LutinLens拍摄效果
+![lens](https://private-user-images.githubusercontent.com/69973084/486522201-b0be3dd1-83d7-428d-ba97-2d47fb1295a5.jpg?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTcyNTgzNzksIm5iZiI6MTc1NzI1ODA3OSwicGF0aCI6Ii82OTk3MzA4NC80ODY1MjIyMDEtYjBiZTNkZDEtODNkNy00MjhkLWJhOTctMmQ0N2ZiMTI5NWE1LmpwZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA5MDclMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwOTA3VDE1MTQzOVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTE0NzgwYjQ4NDQ5ZjQzZGQ0YjcxNWNlZmE5ZjdkOWExYjZkZjEwM2VhM2EyNDlhMmM2ZjQ4Y2U4ZjNhOTJjMWYmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.7FOPla43k6tH9IPEOvNH-vf7Z8hPnEEM3DQEu0FcC-c)
+
+![lens](https://private-user-images.githubusercontent.com/69973084/486523382-954dd707-ee88-4825-90b4-a3b44721dc4c.jpg?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTcyNTg4OTAsIm5iZiI6MTc1NzI1ODU5MCwicGF0aCI6Ii82OTk3MzA4NC80ODY1MjMzODItOTU0ZGQ3MDctZWU4OC00ODI1LTkwYjQtYTNiNDQ3MjFkYzRjLmpwZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA5MDclMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwOTA3VDE1MjMxMFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPThjYjM0NTc1MGRjOWI2Nzk3MmRhNGZlOWMwNWUxOWNjNzEyZTkyZWE3YWI2MDMxMmYwMDMxZmEwYjBhYjIwMWMmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.aotPbLd5XDnHb9yX1xL8izotfDfevw0QoIElfqLG6To)
+
+![lens](https://private-user-images.githubusercontent.com/69973084/486523387-73d24966-8f5c-4f79-bb46-ce9a1db330e5.jpg?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTcyNTg4OTAsIm5iZiI6MTc1NzI1ODU5MCwicGF0aCI6Ii82OTk3MzA4NC80ODY1MjMzODctNzNkMjQ5NjYtOGY1Yy00Zjc5LWJiNDYtY2U5YTFkYjMzMGU1LmpwZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA5MDclMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwOTA3VDE1MjMxMFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWEzZjhmOWE1MWNjY2JhYzhkY2I3ZTJlMzg3ZGFhNzcxNjhjMzZjMWYwMTdiOWQ4Mjk5NTg5ZDYzMzc0MDA1MDEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.G5-bv19u6nxqzr6FRjoCGmZGCgsmbr1KRkI1s71Ot00)
+
+#### 此外 我们还支持更多场景：
+
+![9b7e11a9f9edf8a52de4d43de53318c8](https://github.com/user-attachments/assets/7526583e-0f20-4080-a356-e21e80d90b1b)
+
+#### 支持诸多相机必要的特性
+
+![4f34e60b7f929d509aa8b75dae7b19e4](https://github.com/user-attachments/assets/28412126-97be-44da-91fb-30ed0e04eed5)
+
+![3f17341f743e75605f513b433ccb59f9](https://github.com/user-attachments/assets/1f7595e1-7187-45af-b86a-8cee2dbd700b)
 
 ## 🏗️ 技术架构
 
@@ -62,7 +86,7 @@ uniform sampler2D uLut2D; // 打包的2D LUT纹理
 
 ### 2. AI智能构图系统
 
-**[预留图片位置：AI构图建议界面截图]**
+![setting](https://private-user-images.githubusercontent.com/69973084/486522718-ea9df1ff-66b8-49ae-9c65-ea46f1339d9d.jpg?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTcyNTgzNzksIm5iZiI6MTc1NzI1ODA3OSwicGF0aCI6Ii82OTk3MzA4NC80ODY1MjI3MTgtZWE5ZGYxZmYtNjZiOC00OWFlLTljNjUtZWE0NmYxMzM5ZDlkLmpwZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA5MDclMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwOTA3VDE1MTQzOVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWNlODRiYjI5MmY0ODM4NWQ3YzY2OTYwMTk1OTQ2ZjdkYjk5YmU0NmE1MmY1ZThhNWYxYThmNmUwMTk0MTE0ZTImWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.33hKmtKF7BIR7bwGm6MxvGR_QZ8WkOocETgomeXfPEc)
 
 基于多Agent架构的智能构图分析系统：
 
@@ -143,7 +167,8 @@ echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
 nix develop
 ```
 
-**[预留图片位置：开发环境配置截图]**
+**开发环境配置截图<img width="1920" height="1080" alt="截屏2025-09-07 23 29 51 2" src="https://github.com/user-attachments/assets/b62004ac-7006-45e4-b424-79229cf7ce85" />
+
 
 ## 🎮 使用指南
 
@@ -160,7 +185,6 @@ nix develop
 2. **实时预览**：GPU 加速实时预览滤镜效果
 3. **自动切换**：启用 AI 模式后自动推荐最适合的滤镜
 
-**[预留图片位置：LUT滤镜效果对比图]**
 
 ## 🔬 技术细节
 
@@ -174,8 +198,6 @@ nix develop
 - **纹理优化**: 智能纹理采样和内存回收机制
 
 ### AI服务架构
-
-**[预留图片位置：AI服务架构图]**
 
 后端AI服务基于以下技术栈：
 
@@ -204,7 +226,6 @@ nix develop
 - 🆕 **MCP协议支持**: 标准化 AI 服务接口
 - 🆕 **实时性能优化**: GPU 并行处理架构
 
-**[预留图片位置：功能对比图表]**
 
 ## 📄 开源协议
 
@@ -228,9 +249,8 @@ nix develop
 ## 📞 关于项目其他
 
 - **App项目仓库**: https://github.com/KirisameLonnet/LutinLens
-- 服务端项目仓库：
+- **服务器项目仓库**：https://github.com/m0cal/lutinlens_server
 
-**[预留图片位置：团队照片或联系方式二维码]**
 
 ---
 
