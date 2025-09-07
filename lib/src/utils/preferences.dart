@@ -202,6 +202,12 @@ class Preferences {
   static bool getAiSuggestionEnabled() =>
       _preferences!.getBool(prefAiSuggestionEnabled) ?? false;
 
+  // AI轮询频率（秒）
+  static Future setAiPollingInterval(int seconds) async =>
+      await _preferences!.setInt(prefAiPollingInterval, seconds);
+  static int getAiPollingInterval() =>
+      _preferences!.getInt(prefAiPollingInterval) ?? 5;
+
   // AI组件位置
   static Future setAiWidgetX(double x) async =>
       await _preferences!.setDouble(prefAiWidgetX, x);

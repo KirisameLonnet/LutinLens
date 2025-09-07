@@ -35,5 +35,6 @@ const String prefAiLutSuggestionUrl = 'aiLutSuggestionUrl';
 const String prefAiFramingSuggestionUrl = 'aiFramingSuggestionUrl';
 const String prefAiServerUrl = 'aiServerUrl'; // 保留用于向后兼容
 const String prefAiSuggestionEnabled = 'aiSuggestionEnabled';
+const String prefAiPollingInterval = 'aiPollingInterval';
 const String prefAiWidgetX = 'aiWidgetX';
 const String prefAiWidgetY = 'aiWidgetY';

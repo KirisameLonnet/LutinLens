@@ -124,6 +124,17 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Widget _aiPollingIntervalTile() {
+    return ListTile(
+      title: const Text('轮询频率'),
+      subtitle: Text('每 ${Preferences.getAiPollingInterval()} 秒获取一次AI建议'),
+      trailing: const Icon(Icons.keyboard_arrow_right),
+      onTap: () {
+        _showAiPollingIntervalDialog();
+      },
+    );
+  }
+
   void _showAiImageUploadUrlDialog() {
     final TextEditingController controller = TextEditingController(
       text: Preferences.getAiImageUploadUrl(),
@@ -278,6 +289,62 @@ class _SettingsPageState extends State<SettingsPage> {
               if (!mounted) return;
               setState(() {});
               navigator.pop();
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAiPollingIntervalDialog() {
+    final TextEditingController controller = TextEditingController(
+      text: Preferences.getAiPollingInterval().toString(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('设置轮询频率'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'AI建议获取频率设置，建议3-10秒之间',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: '5',
+                labelText: '轮询间隔（秒）',
+                border: OutlineInputBorder(),
+                helperText: '间隔时间越短，响应越快，但耗电量更大',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final intervalStr = controller.text.trim();
+              if (intervalStr.isNotEmpty) {
+                final interval = int.tryParse(intervalStr) ?? 5;
+                // 限制在1-60秒范围内
+                final clampedInterval = interval.clamp(1, 60);
+                await Preferences.setAiPollingInterval(clampedInterval);
+                if (!mounted) return;
+                setState(() {});
+                navigator.pop();
+              }
             },
             child: const Text('保存'),
           ),
@@ -805,6 +872,7 @@ class _SettingsPageState extends State<SettingsPage> {
               title: 'AI设置',
               children: [
                 _aiSuggestionEnabledTile(),
+                _aiPollingIntervalTile(),
                 _aiImageUploadUrlTile(),
                 _aiLutSuggestionUrlTile(),
                 _aiFramingSuggestionUrlTile(),

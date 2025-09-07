@@ -52,9 +52,10 @@ class AiSuggestionService extends ChangeNotifier {
     final framingSuggestionUrl = Preferences.getAiFramingSuggestionUrl();
     
     if (imageUploadUrl.isNotEmpty && lutSuggestionUrl.isNotEmpty && framingSuggestionUrl.isNotEmpty) {
-      // 每3秒执行完整的业务流程
+      // 使用用户设置的轮询频率
+      final pollingInterval = Preferences.getAiPollingInterval();
       _uploadTimer?.cancel();
-      _uploadTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _uploadTimer = Timer.periodic(Duration(seconds: pollingInterval), (_) {
         _uploadCurrentFrame();
       });
       
@@ -95,7 +96,7 @@ class AiSuggestionService extends ChangeNotifier {
 
     try {
       _isUploading = true;
-      _hideTimer?.cancel(); // 取消之前的隐藏计时器
+      // 不立即取消隐藏计时器，让取景建议能完整显示
       // 只更新取景建议为"分析中..."，LUT建议保持上一次的内容
       _currentFramingSuggestion = '分析中...';
       // 不清空LUT值，保持应用按钮可用直到下一条LUT建议给出
@@ -187,9 +188,9 @@ class AiSuggestionService extends ChangeNotifier {
       
       debugPrint('[AI] LUT建议显示: $lutDisplayName, 取景建议: $_currentFramingSuggestion, ready_to_shoot: $_readyToShoot');
       
-      // 取景建议显示2秒后隐藏，但LUT建议保持显示
+      // 取消之前的隐藏计时器，设置新的3秒计时器
       _hideTimer?.cancel();
-      _hideTimer = Timer(const Duration(seconds: 2), () {
+      _hideTimer = Timer(const Duration(seconds: 3), () {
         _currentFramingSuggestion = ''; // 只清空取景建议
         // _currentLutSuggestion 保持不变，继续显示LUT
         // _currentLutValue 保持不变，应用按钮继续可用
