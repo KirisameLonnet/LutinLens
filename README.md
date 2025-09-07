@@ -14,35 +14,34 @@
 
 ## 📖 项目简介
 
-LutinLens是一款基于开源相机应用LibreCamera深度优化的智能相机应用，专为Sky Hackathon 2025设计开发。该项目结合了先进的计算机视觉技术和人工智能，为用户提供专业级的摄影体验和智能构图建议。
+LutinLens 是一款基于开源相机应用 LibreCamera 深度优化的智能相机应用，专为 Sky Hackathon 2025 设计开发。该项目由 NVIDIA NeMo Agent Toolkit 赋能，为用户提供专业级的摄影体验和智能构图建议。
 
 **[预留图片位置：应用主界面截图]**
 
 ### 🌟 核心特性
 
-- **🎯 AI智能构图建议**: 基于NVIDIA NeMo框架的多Agent系统实时分析场景并提供构图建议
-- **🎨 GPU加速LUT渲染**: 采用GLSL实现的YUV到ARGB转换和三线性插值算法，支持.cube文件格式的LUT滤镜
-- **🔄 自AI动LUT切换**: AI图像识别自动选择最适合的LUT预设
-- **📱 跨平台兼容**: 基于Flutter开发，主要针对Android平台优化，iOS也可运行
+- **🎯 智能构图与 LUT 建议**: 基于 NVIDIA NeMo 框架的多 Agent 系统实时分析场景并提供构图及 LUT 套用建议
+- **🎨 GPU 加速 LUT 渲染**: 采用 GLSL 实现的 YUV 到 ARGB 转换和三线性插值算法，支持 .cube 文件格式的 LUT 滤镜
+- **📱 跨平台兼容**: 基于 Flutter 开发，主要针对 Android 平台优化，iOS 也可运行
 
 ## 🏗️ 技术架构
 
 ### 前端架构
 
 - **开发框架**: Flutter 3.16.0+ / Dart 3.2.0+
-- **图像处理**: GPU加速GLSL着色器
-- **相机引擎**: 基于LibreCamera核心优化
+- **图像处理**: GPU 加速 GLSL 着色器
+- **相机引擎**: 基于 LibreCamera 核心优化
 - **UI框架**: Material Design 3 + Dynamic Color
 
-### 后端架构（LutinLens Server）
+### 后端架构（[LutinLens Server](https://github.com/m0cal/lutinlens_server)）
 
-- **AI框架与技术协议**: NVIDIA NeMo Framework (NVIDIA AIQ) 多Agent架构, Model Context Protocol (MCP)
-- **测试算力服务**: 阿里云百炼（百炼算力平台）
-- **大语言模型**: 千问Flash (Qwen-Flash)
+- **AI框架与技术协议**: NVIDIA NeMo Agent Toolkit 多Agent架构, Model Context Protocol (MCP)
+- **算力服务**: 阿里云百炼（百炼算力平台）
+- **图像分析和大语言模型**：Qwen 系列
 
 ## 🚀 主要创新点
 
-### 1. GPU加速LUT处理系统
+### 1. GPU 加速 LUT 处理系统
 
 基于GLSL（OpenGL Shading Language）实现的高性能LUT（Look-Up Table）处理系统：
 
@@ -56,9 +55,8 @@ uniform sampler2D uLut2D; // 打包的2D LUT纹理
 
 **技术优势**：
 
-- **性能提升**: GPU并行处理，处理速度提升300%+
-- **实时渲染**: 支持实时预览LUT效果
-- **标准兼容**: 完整支持.cube格式LUT文件
+- **高性能实时渲染**: GPU 并行处理，在第二代骁龙8移动平台上约30帧
+- **标准兼容**: 完整支持 .cube 格式 LUT 文件
 - **内存优化**: 智能内存管理，支持大尺寸LUT
 
 ### 2. AI智能构图系统
@@ -157,9 +155,9 @@ nix develop
 
 ### LUT滤镜使用
 
-1. 可以手动切换，也可以使用AI智能建议（需部署LutinLens服务器）
-2. **实时预览**：GPU加速实时预览滤镜效果
-3. **自动切换**：启用AI模式后自动推荐最适合的滤镜
+1. 可以手动切换，也可以使用 AI 智能建议（需连接到 LutinLens 服务器）
+2. **实时预览**：GPU 加速实时预览滤镜效果
+3. **自动切换**：启用 AI 模式后自动推荐最适合的滤镜
 
 **[预留图片位置：LUT滤镜效果对比图]**
 
@@ -180,15 +178,17 @@ nix develop
 
 后端AI服务基于以下技术栈：
 
-- **NVIDIA NeMo**: 用于构建多Agent问答系统
-- **阿里云百炼**: 提供高性能GPU算力支持
-- **千问Flash**: 快速响应的大语言模型
+- **NVIDIA NeMo Agent Toolkit**: 用于构建多 Agent 协作系统
+- **阿里云百炼**: 提供模型支持
 - **MCP协议**: 标准化的模型上下文协议
+
+在 LUT 推荐中，我们使用了 NeMo 框架下的 ReAct Agent 作为工作流，它可以使用我们编写的图像内容提取工具 (content_identifier) 和根据图像内容查找适合 LUT 的工具 (lut_finder) 来推荐一个合适的 LUT。
+在构图建议中，得益于 Qwen-VL-Max 模型优秀的多图像理解能力，我们将用户取景器内过去一段时间内的多张图像组合后作为 Prompt 输入模型，使其可以感知到过去一段时间内用户的操作意图是否遵循了模型建议，并且以此为基础进一步提出可操作的构图建议。
 
 ### 性能优化
 
-- **GPU加速**: 利用移动设备GPU进行图像处理
-- **内存管理**: 智能LUT缓存和内存回收
+- **GPU加速**: 利用移动设备 GPU 进行图像处理
+- **内存管理**: 智能 LUT 缓存和内存回收
 - **帧率优化**: 保持30FPS流畅预览体验
 
 ## 📊 基于LibreCamera的改进
@@ -197,25 +197,17 @@ nix develop
 
 ### 新增核心功能
 
-- 🆕 **GPU加速LUT处理**: 全新的GLSL着色器系统
-- 🆕 **AI构图建议**: 基于NeMo框架的智能分析
-- 🆕 **自动LUT切换**: AI驱动的滤镜推荐
-- 🆕 **MCP协议支持**: 标准化AI服务接口
-- 🆕 **实时性能优化**: GPU并行处理架构
+- 🆕 **GPU加速LUT处理**: 全新的 GLSL 着色器系统
+- 🆕 **AI构图建议**: 基于 NeMo 框架的智能分析
+- 🆕 **自动LUT切换**: AI 驱动的 LUT 推荐
+- 🆕 **MCP协议支持**: 标准化 AI 服务接口
+- 🆕 **实时性能优化**: GPU 并行处理架构
 
 **[预留图片位置：功能对比图表]**
 
 ## 📄 开源协议
 
 本项目遵循 **GNU General Public License v3.0 (GPLv3)** 开源协议。
-
-这意味着：
-
-- ✅ 自由使用、修改和分发
-- ✅ 商业用途需要开源
-- ✅ 衍生作品必须使用相同协议
-- ⚠️ 不提供任何担保或保证
-
 详细协议条款请参阅 [LICENSE](LICENSE) 文件。
 
 ## 🏆 Sky Hackathon 2025
@@ -227,14 +219,10 @@ nix develop
 1. **跨平台AI集成**: Flutter + 基于NVIDIA NeMo框架智能分析 + 移动端GLSL GPU加速图像处理
 2. **实时GPU处理**: 移动端高性能图像渲染
 3. **智能用户体验**: AI驱动的摄影助手功能
-4. **开源生态贡献**: 为LibreCamera社区提供高价值扩展
-
+   
 ## 👥 开发团队
 
 - 成员：Ryan(搭建后端NeMo框架服务器，搭建多Agent工具链)，KirisameLonnet(前端Flutter开发，实现GPU加速LUT渲染并优化前端)
-- **技术架构**: LibreCamera(Flutter) + NVIDIA NeMo
-- **测试算力支持**: 阿里云百炼平台
-- **开源协议**: GPLv3
 
 ## 📞 关于项目其他
 
