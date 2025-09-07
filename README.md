@@ -14,7 +14,8 @@
 
 ## 📖 项目简介
 
-LutinLens 是一款基于开源相机应用 LibreCamera 深度优化的智能相机应用，专为 Sky Hackathon 2025 设计开发。该项目由 NVIDIA NeMo Agent Toolkit 赋能，为用户提供专业级的摄影体验和智能构图建议。
+LutinLens 是一款基于 LibreCamera 内核优化的智能相机应用，前端采用 Flutter 构建跨平台 UI，后端基于 NVIDIA NeMo Agent Toolkit + MCP 协议 提供实时 AI 构图与 LUT 推荐能力。
+其目标是将传统相机的硬件拍摄体验与 AI 智能服务结合，形成实时构图建议 + GPU 加速风格化渲染的一体化解决方案。
 
 **[预留图片位置：应用主界面截图]**
 
