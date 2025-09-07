@@ -167,9 +167,6 @@ echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
 nix develop
 ```
 
-**开发环境配置截图<img width="1920" height="1080" alt="截屏2025-09-07 23 29 51 2" src="https://github.com/user-attachments/assets/b62004ac-7006-45e4-b424-79229cf7ce85" />
-
-
 ## 🎮 使用指南
 
 ### AI智能构图功能
