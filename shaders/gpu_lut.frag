@@ -131,8 +131,8 @@ void main() {
   // coordinates are still just srcCoord normalized by the source size.
   // Using srcCoord/uUv dims would exceed 1.0; use the same normalized srcUV.
   vec2 srcUV = srcCoord / vec2(uSrcW, uSrcH);
-  // 修复上下颠倒问题：翻转Y坐标
-  srcUV.y = 1.0 - srcUV.y;
+  // 确保坐标系以左下角为(0,0)：不翻转Y坐标，保持OpenGL标准坐标系
+  // srcUV.y = 1.0 - srcUV.y; // 注释掉Y坐标翻转
   vec2 uvUV = srcUV;
 
   // Sample Y (full res) and UV (half res). Values in [0..1]

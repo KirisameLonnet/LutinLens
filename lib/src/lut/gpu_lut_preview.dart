@@ -373,7 +373,7 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
 
     // 照搬原生CameraPreview方案：不强制指定画布尺寸，让父容器（CameraPreview）决定
     // 使用相机源尺寸作为CustomPaint的固有尺寸，但允许父容器进行缩放
-    debugPrint('[GPU] Using camera source resolution as intrinsic size: ${_srcW}x$_srcH px');
+    // debugPrint('[GPU] Using camera source resolution as intrinsic size: ${_srcW}x$_srcH px');
 
     // 构建基础绘制 - 使用相机源尺寸作为固有尺寸
     Widget content = CustomPaint(
@@ -422,10 +422,10 @@ class _GpuLutPreviewState extends State<GpuLutPreview> {
     }
 
     // 照搬原生CameraPreview方案：让父容器（CameraPreview）决定尺寸、缩放、裁切
-    // 我们只提供一个具有相机原始分辨率的 "画板"
+    // 使用固定的1920x1080分辨率作为画板尺寸
     Widget overlay = SizedBox(
-      width: _srcW.toDouble(),
-      height: _srcH.toDouble(),
+      width: 1920.0,
+      height: 1080.0,
       child: content, // content 内部处理了旋转和镜像
     );
 

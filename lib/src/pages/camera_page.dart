@@ -30,6 +30,7 @@ import 'package:librecamera/src/lut/software_lut_processor.dart';
 import 'package:librecamera/src/lut/gpu_lut_still_renderer.dart';
 import 'package:librecamera/src/widgets/lut_controls.dart';
 import 'package:librecamera/src/services/ai_suggestion_service.dart';
+import 'package:librecamera/src/widgets/gallery_widget.dart';
 
 /// Camera example home widget.
 class CameraPage extends StatefulWidget {
@@ -406,6 +407,13 @@ class _CameraPageState extends State<CameraPage>
             onTap: _timerStopwatch.elapsedTicks <= 1 
               ? () => _navigateToSettings() 
               : null,
+          ),
+          
+          // 相册按钮
+          Container(
+            width: 48,
+            height: 48,
+            child: GalleryWidget(),
           ),
           
           // 拍照按钮（中间）
