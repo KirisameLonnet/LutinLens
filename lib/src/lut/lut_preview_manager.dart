@@ -60,7 +60,7 @@ class LutPreviewManager extends ChangeNotifier {
 
   /// 获取默认LUT路径（直接使用静态资源）
   Future<String> getDefaultLutPath() async {
-    return 'assets/Luts/CINEMATIC_FILM/CINEMATIC_FILM.cube';
+    return 'assets/Luts/0_人像，电影感，皮肤质感.cube';
   }
 
   /// 创建LUT预览Widget

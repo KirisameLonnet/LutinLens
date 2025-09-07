@@ -5,16 +5,14 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 /// LUT文件管理器
 /// 负责管理用户的LUT文件，包括默认LUT的初始化、用户LUT的增删改查等
 class LutManager {
   static const String _lutsInitializedKey = 'luts_initialized';
-  static const String _lastAppVersionKey = 'last_app_version';
   static const String _defaultLutPath = 'assets/Luts/';
   static const String _userLutsDirName = 'luts';
-  static const String _defaultLutName = 'CINEMATIC_FILM';
+  static const String _defaultLutName = '0_人像，电影感，皮肤质感';
 
   /// 获取用户LUT存储目录
   static Future<Directory> getUserLutsDirectory() async {
@@ -29,80 +27,18 @@ class LutManager {
   }
 
   /// 初始化LUT系统
-  /// 在每次安装APK或应用更新时将assets中的默认LUT复制到用户目录
+  /// 直接使用静态资源，无需复制到用户目录
   static Future<void> initializeLuts() async {
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      debugPrint('🔄 初始化LUT系统，直接使用静态资源...');
       
-      bool lutsInitialized = prefs.getBool(_lutsInitializedKey) ?? false;
-      String? lastAppVersion = prefs.getString(_lastAppVersionKey);
-      // 使用 version+buildNumber 来区分安装包，确保升级构建号也会重新拷贝
-      String currentAppVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+      // 验证静态资源是否可用
+      final names = await _discoverAssetLutNames();
+      debugPrint('� 发现 ${names.length} 个静态LUT文件: $names');
       
-      // 检查是否需要重新拷贝LUT文件
-      // 条件：首次安装或应用版本发生变化
-      bool shouldReinitialize = !lutsInitialized || 
-                                lastAppVersion == null || 
-                                lastAppVersion != currentAppVersion;
-      
-      if (shouldReinitialize) {
-        debugPrint('🔄 检测到应用更新或首次安装，重新初始化LUT文件...');
-        debugPrint('📱 当前版本: $currentAppVersion, 上次版本: $lastAppVersion');
-        
-        await _copyDefaultLutsToUserDirectory();
-        
-        // 更新标志位和版本号
-        await prefs.setBool(_lutsInitializedKey, true);
-        await prefs.setString(_lastAppVersionKey, currentAppVersion);
-        
-        debugPrint('✅ LUT初始化完成 (版本: $currentAppVersion)');
-      } else {
-        debugPrint('ℹ️ LUT已经是最新版本 ($currentAppVersion)');
-      }
+      debugPrint('✅ LUT初始化完成，使用静态资源模式');
     } catch (e) {
       debugPrint('❌ LUT初始化失败: $e');
-    }
-  }
-
-  /// 从assets复制默认LUT到用户目录
-  /// 在每次应用安装或更新时执行，会覆盖已存在的默认LUT文件
-  static Future<void> _copyDefaultLutsToUserDirectory() async {
-    try {
-      final Directory userLutsDir = await getUserLutsDirectory();
-      
-      // 从 AssetManifest 动态发现可用的 LUT
-      final List<String> lutNames = await _discoverAssetLutNames();
-      bool anyLutCopied = false;
-
-      debugPrint('📦 开始拷贝 ${lutNames.length} 个默认LUT文件...');
-
-      for (final lutName in lutNames) {
-        try {
-          // 验证 cube 是否存在（避免清单误差）
-          await rootBundle.load('$_defaultLutPath$lutName/$lutName.cube');
-          await _copyAssetFolder('$_defaultLutPath$lutName/', lutName, userLutsDir);
-          debugPrint('✅ 成功复制LUT: $lutName');
-          anyLutCopied = true;
-        } catch (e) {
-          debugPrint('ℹ️ 跳过无效LUT "$lutName": $e');
-        }
-      }
-
-      if (!anyLutCopied) {
-        debugPrint('⚠️ 没有找到任何默认LUT文件 (assets/Luts/)');
-      } else {
-        debugPrint('🎉 成功拷贝了 ${lutNames.where((name) {
-          try {
-            return true; // 简化判断，实际成功的文件数通过日志确认
-          } catch (e) {
-            return false;
-          }
-        }).length} 个LUT文件');
-      }
-      
-    } catch (e) {
-      debugPrint('❌ 复制默认LUT失败: $e');
     }
   }
 
@@ -128,17 +64,18 @@ class LutManager {
 
         final Set<String> names = {};
         for (final String assetPath in manifestMap.keys.cast<String>()) {
-          // 形如: assets/Luts/<NAME>/<FILE>.cube
+          // 直接匹配 assets/Luts/*.cube 格式的文件
           if (assetPath.startsWith(_defaultLutPath) && assetPath.endsWith('.cube')) {
             final parts = assetPath.split('/');
-            // 优先使用目录名作为 LUT 名，避免文件名不一致导致丢失
-            if (parts.length >= 3) {
-              final dirName = parts[2];
-              names.add(dirName);
-            } else {
-              final fileName = parts.last; // <FILE>.cube
+            if (parts.length == 3) {
+              // 形如: assets/Luts/<FILE>.cube 的直接文件
+              final fileName = parts[2]; // <FILE>.cube
               final name = fileName.replaceAll('.cube', '');
               names.add(name);
+            } else if (parts.length >= 4) {
+              // 形如: assets/Luts/<DIR>/<FILE>.cube 的子目录文件（兼容旧格式）
+              final dirName = parts[2];
+              names.add(dirName);
             }
           }
         }
@@ -163,17 +100,18 @@ class LutManager {
 
         final Set<String> names = {};
         for (final String assetPath in manifestMap.keys) {
-          // 形如: assets/Luts/<NAME>/<FILE>.cube
+          // 直接匹配 assets/Luts/*.cube 格式的文件
           if (assetPath.startsWith(_defaultLutPath) && assetPath.endsWith('.cube')) {
             final parts = assetPath.split('/');
-            // 优先使用目录名作为 LUT 名，避免文件名不一致导致丢失
-            if (parts.length >= 3) {
-              final dirName = parts[2];
-              names.add(dirName);
-            } else {
-              final fileName = parts.last; // <FILE>.cube
+            if (parts.length == 3) {
+              // 形如: assets/Luts/<FILE>.cube 的直接文件
+              final fileName = parts[2]; // <FILE>.cube
               final name = fileName.replaceAll('.cube', '');
               names.add(name);
+            } else if (parts.length >= 4) {
+              // 形如: assets/Luts/<DIR>/<FILE>.cube 的子目录文件（兼容旧格式）
+              final dirName = parts[2];
+              names.add(dirName);
             }
           }
         }
@@ -184,32 +122,6 @@ class LutManager {
     } catch (e) {
       debugPrint('[LUT][ERR] 读取 AssetManifest 失败，回退为空: $e');
       return [];
-    }
-  }
-
-  /// 复制assets文件夹到用户目录
-  static Future<void> _copyAssetFolder(String assetPath, String lutName, Directory targetDir) async {
-    try {
-      // 复制LUT cube文件
-      final ByteData cubeData = await rootBundle.load('$assetPath$lutName.cube');
-      final File cubeFile = File(p.join(targetDir.path, '$lutName.cube'));
-      await cubeFile.writeAsBytes(cubeData.buffer.asUint8List());
-
-      // 解析并写入全局描述文件
-      String? description;
-      // 优先读取 describe.csv
-      description = await _tryReadAssetDescription(assetPath, lutName, 'describe.csv');
-      // 兼容 discribe.csv
-      description ??= await _tryReadAssetDescription(assetPath, lutName, 'discribe.csv');
-      // 回退默认
-      description ??= '$lutName cinematic look LUT';
-
-      await _upsertGlobalDescription(lutName, description);
-
-      debugPrint('✅ 已复制LUT文件: $assetPath -> $lutName');
-    } catch (e) {
-      debugPrint('❌ 复制LUT失败 $assetPath: $e');
-      rethrow; // 重新抛出异常，让调用者知道复制失败
     }
   }
 
@@ -276,12 +188,40 @@ class LutManager {
         debugPrint('[LUT] 未发现任何 LUT 名称，请检查 assets 路径与 pubspec 资源声明');
       }
       for (final name in names) {
-        final assetDir = '$_defaultLutPath$name/';
-        final lutPath = '$assetDir$name.cube';
-        debugPrint('[LUT] 尝试构建 LUT: name=$name, path=$lutPath');
-        String? desc = await _tryReadAssetDescription(assetDir, name, 'describe.csv');
-        desc ??= await _tryReadAssetDescription(assetDir, name, 'discribe.csv');
+        // 直接构建 LUT 路径，支持两种格式：
+        // 1. assets/Luts/<NAME>.cube (新格式，直接放在Luts目录下)
+        // 2. assets/Luts/<NAME>/<NAME>.cube (旧格式，每个LUT有自己的文件夹)
+        String lutPath = '$_defaultLutPath$name.cube';
+        
+        // 先尝试直接路径
+        try {
+          await rootBundle.load(lutPath);
+          debugPrint('[LUT] 找到直接路径的 LUT: $lutPath');
+        } catch (e) {
+          // 如果直接路径不存在，尝试子目录路径（兼容旧格式）
+          lutPath = '$_defaultLutPath$name/$name.cube';
+          try {
+            await rootBundle.load(lutPath);
+            debugPrint('[LUT] 找到子目录路径的 LUT: $lutPath');
+          } catch (e2) {
+            debugPrint('[LUT] 跳过无法加载的 LUT: $name ($e, $e2)');
+            continue;
+          }
+        }
+        
+        debugPrint('[LUT] 构建 LUT: name=$name, path=$lutPath');
+        String? desc;
+        
+        // 尝试读取描述（先尝试子目录格式，再尝试根目录格式）
+        try {
+          desc = await _tryReadAssetDescription('$_defaultLutPath$name/', name, 'describe.csv');
+          desc ??= await _tryReadAssetDescription('$_defaultLutPath$name/', name, 'discribe.csv');
+        } catch (e) {
+          // 忽略描述读取错误
+        }
+        
         desc ??= '$name cinematic look LUT';
+        
         luts.add(LutFile(
           name: name,
           path: lutPath,

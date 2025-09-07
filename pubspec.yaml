@@ -96,7 +96,6 @@ flutter:
   assets:
     - assets/images/
     - assets/Luts/
-    - assets/Luts/CINEMATIC_FILM/
   shaders:
     - shaders/gpu_lut.frag
   generate: true
