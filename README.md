@@ -1,4 +1,4 @@
-<img width="1920" height="860" alt="image" src="https://github.com/user-attachments/assets/295ad1fc-edef-45d0-9195-ae981a099981" /># LutinLens
+# LutinLens
 
 <div align="center">
 
