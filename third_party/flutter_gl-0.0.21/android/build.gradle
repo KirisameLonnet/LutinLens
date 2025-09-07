@@ -30,7 +30,7 @@ apply plugin: 'kotlin-android'
 
 android {
     namespace "com.futouapp.flutter_gl.flutter_gl"
-    compileSdkVersion 30
+    compileSdkVersion 36
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'

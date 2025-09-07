@@ -22,8 +22,9 @@ subprojects { subproject ->
         subproject.plugins.hasPlugin('com.android.library')) &&
         subproject.hasProperty('android')) {
       subproject.android {
-        if (hasProperty('compileSdkVersion')) {
-          compileSdkVersion 34
+        compileSdkVersion 36
+        if (hasProperty('targetSdkVersion')) {
+          targetSdkVersion 36
         }
       }
     }
