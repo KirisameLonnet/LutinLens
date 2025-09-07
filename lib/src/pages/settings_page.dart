@@ -79,14 +79,47 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _aiTestModeTile() {
-    return SwitchListTile(
-      title: const Text('AI测试模式'),
-      subtitle: const Text('启用内嵌HTTP服务器 (127.0.0.1:1234) 进行本地测试'),
-      value: Preferences.getAiTestMode(),
-      onChanged: (value) async {
-        await Preferences.setAiTestMode(value);
-        setState(() {});
+  Widget _aiImageUploadUrlTile() {
+    return ListTile(
+      title: const Text('图床服务'),
+      subtitle: Text(
+        Preferences.getAiImageUploadUrl().isEmpty 
+          ? '未设置图片上传服务' 
+          : Preferences.getAiImageUploadUrl(),
+      ),
+      trailing: const Icon(Icons.keyboard_arrow_right),
+      onTap: () {
+        _showAiImageUploadUrlDialog();
+      },
+    );
+  }
+
+  Widget _aiLutSuggestionUrlTile() {
+    return ListTile(
+      title: const Text('LUT建议服务'),
+      subtitle: Text(
+        Preferences.getAiLutSuggestionUrl().isEmpty 
+          ? '未设置LUT建议API' 
+          : Preferences.getAiLutSuggestionUrl(),
+      ),
+      trailing: const Icon(Icons.keyboard_arrow_right),
+      onTap: () {
+        _showAiLutSuggestionUrlDialog();
+      },
+    );
+  }
+
+  Widget _aiFramingSuggestionUrlTile() {
+    return ListTile(
+      title: const Text('取景建议服务'),
+      subtitle: Text(
+        Preferences.getAiFramingSuggestionUrl().isEmpty 
+          ? '未设置取景建议API' 
+          : Preferences.getAiFramingSuggestionUrl(),
+      ),
+      trailing: const Icon(Icons.keyboard_arrow_right),
+      onTap: () {
+        _showAiFramingSuggestionUrlDialog();
       },
     );
   }
@@ -103,6 +136,162 @@ class _SettingsPageState extends State<SettingsPage> {
       onTap: () {
         _showAiServerUrlDialog();
       },
+    );
+  }
+
+  void _showAiImageUploadUrlDialog() {
+    final TextEditingController controller = TextEditingController(
+      text: Preferences.getAiImageUploadUrl(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('设置AI图像上传服务'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '图床服务地址（用于存储上传的图片）',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: 'http://ryanssite.icu:8003/static',
+                labelText: '图床服务地址',
+                border: OutlineInputBorder(),
+                helperText: '图片将通过PUT请求上传到此地址',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              String url = controller.text.trim();
+              if (url.isNotEmpty && !url.startsWith('http')) {
+                url = 'http://$url';
+              }
+              await Preferences.setAiImageUploadUrl(url);
+              setState(() {});
+              Navigator.of(context).pop();
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAiLutSuggestionUrlDialog() {
+    final TextEditingController controller = TextEditingController(
+      text: Preferences.getAiLutSuggestionUrl(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('设置LUT建议服务'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'LUT建议API服务地址',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: 'http://ryanssite.icu:8000/single/generate',
+                labelText: 'LUT建议API地址',
+                border: OutlineInputBorder(),
+                helperText: '返回推荐的LUT编号',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              String url = controller.text.trim();
+              if (url.isNotEmpty && !url.startsWith('http')) {
+                url = 'http://$url';
+              }
+              await Preferences.setAiLutSuggestionUrl(url);
+              setState(() {});
+              Navigator.of(context).pop();
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAiFramingSuggestionUrlDialog() {
+    final TextEditingController controller = TextEditingController(
+      text: Preferences.getAiFramingSuggestionUrl(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('设置取景建议服务'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '取景建议API服务地址',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: 'http://ryanssite.icu:8001/single/generate',
+                labelText: '取景建议API地址',
+                border: OutlineInputBorder(),
+                helperText: '返回拍摄构图建议',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              String url = controller.text.trim();
+              if (url.isNotEmpty && !url.startsWith('http')) {
+                url = 'http://$url';
+              }
+              await Preferences.setAiFramingSuggestionUrl(url);
+              setState(() {});
+              Navigator.of(context).pop();
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -692,8 +881,9 @@ class _SettingsPageState extends State<SettingsPage> {
               title: 'AI设置',
               children: [
                 _aiSuggestionEnabledTile(),
-                _aiTestModeTile(),
-                _aiServerUrlTile(),
+                _aiImageUploadUrlTile(),
+                _aiLutSuggestionUrlTile(),
+                _aiFramingSuggestionUrlTile(),
               ],
             ),
 

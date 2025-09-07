@@ -30,8 +30,10 @@ const String prefLutMixStrength = 'lutMixStrength';
 const String prefLutEnabled = 'lutEnabled';
 
 // AI服务器相关的偏好设置
-const String prefAiServerUrl = 'aiServerUrl';
+const String prefAiImageUploadUrl = 'aiImageUploadUrl';
+const String prefAiLutSuggestionUrl = 'aiLutSuggestionUrl';
+const String prefAiFramingSuggestionUrl = 'aiFramingSuggestionUrl';
+const String prefAiServerUrl = 'aiServerUrl'; // 保留用于向后兼容
 const String prefAiSuggestionEnabled = 'aiSuggestionEnabled';
-const String prefAiTestMode = 'aiTestMode';
 const String prefAiWidgetX = 'aiWidgetX';
 const String prefAiWidgetY = 'aiWidgetY';

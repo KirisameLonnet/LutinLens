@@ -85,8 +85,8 @@ This document tracks prioritized, actionable work items across stability, perfor
 ## P1 — Docs & Build
 
 - [ ] [Docs] Update README with AI Suggestion overview & privacy
-  - Actions: Document AI modes (embedded/test vs. external server), data handling, and opt-in controls; link `AI_TEST_MODE.md` and `EMBEDDED_AI_SERVER.md`.
-  - Acceptance: Users understand what is sent, how to disable, and how to run test mode.
+  - Actions: Document external AI server flow, data handling, and opt-in controls. Remove references to embedded/test modes.
+  - Acceptance: Users understand what is sent and how to disable.
 
 - [ ] [Build] Document `flutter_gl` and `threeegl.aar` setup
   - Context: `scripts/install_threeegl_aar.sh`, `pubspec.yaml` overrides
@@ -126,10 +126,9 @@ This document tracks prioritized, actionable work items across stability, perfor
 ## References
 - Camera usage: `lib/src/pages/camera_page.dart`
 - GPU LUT: `lib/src/lut/gpu_lut_preview.dart`, `lib/src/lut/lut_preview_manager.dart`
-- AI service: `lib/src/services/ai_suggestion_service.dart`, `lib/src/services/embedded_ai_server.dart`
+- AI service: `lib/src/services/ai_suggestion_service.dart`
 - Preferences & globals: `lib/src/utils/preferences.dart`, `lib/src/globals.dart`
 - Widgets: `lib/src/widgets/*`
 - Provider (optional): `lib/src/provider/lut_provider.dart`
 - Tests: `test/*`
 - Config: `analysis_options.yaml`, `pubspec.yaml`, `.github/workflows/*`
-

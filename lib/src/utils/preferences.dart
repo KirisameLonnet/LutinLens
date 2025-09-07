@@ -172,7 +172,25 @@ class Preferences {
   static bool getLutEnabled() =>
       _preferences!.getBool(prefLutEnabled) ?? true;
 
-  // AI服务器URL
+  // AI图像上传URL
+  static Future setAiImageUploadUrl(String url) async =>
+      await _preferences!.setString(prefAiImageUploadUrl, url);
+  static String getAiImageUploadUrl() =>
+      _preferences!.getString(prefAiImageUploadUrl) ?? 'http://ryanssite.icu:8003/static';
+
+  // AI LUT建议URL
+  static Future setAiLutSuggestionUrl(String url) async =>
+      await _preferences!.setString(prefAiLutSuggestionUrl, url);
+  static String getAiLutSuggestionUrl() =>
+      _preferences!.getString(prefAiLutSuggestionUrl) ?? 'http://ryanssite.icu:8000/single/generate';
+
+  // AI取景建议URL
+  static Future setAiFramingSuggestionUrl(String url) async =>
+      await _preferences!.setString(prefAiFramingSuggestionUrl, url);
+  static String getAiFramingSuggestionUrl() =>
+      _preferences!.getString(prefAiFramingSuggestionUrl) ?? 'http://ryanssite.icu:8001/single/generate';
+
+  // AI服务器URL (保留用于向后兼容)
   static Future setAiServerUrl(String url) async =>
       await _preferences!.setString(prefAiServerUrl, url);
   static String getAiServerUrl() =>
@@ -183,12 +201,6 @@ class Preferences {
       await _preferences!.setBool(prefAiSuggestionEnabled, enabled);
   static bool getAiSuggestionEnabled() =>
       _preferences!.getBool(prefAiSuggestionEnabled) ?? false;
-
-  // AI测试模式是否启用
-  static Future setAiTestMode(bool enabled) async =>
-      await _preferences!.setBool(prefAiTestMode, enabled);
-  static bool getAiTestMode() =>
-      _preferences!.getBool(prefAiTestMode) ?? false;
 
   // AI组件位置
   static Future setAiWidgetX(double x) async =>

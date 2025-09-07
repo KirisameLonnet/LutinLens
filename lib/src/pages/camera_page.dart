@@ -399,17 +399,14 @@ class _CameraPageState extends State<CameraPage>
 
   // 左侧控制栏（横屏模式）- 空白区域
   Widget _leftControlBar() {
-    return Container(
-      width: 0,  // 设置为0宽度，实际不显示
-      child: const SizedBox.shrink(),  // 空组件
-    );
+    return const SizedBox(width: 0);
   }
 
   // 右侧控制栏（横屏模式）- 设置、快门键、闪光灯、缩放滑杆
   Widget _rightControlBar() {
     return Container(
       width: 80,
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withValues(alpha: 0.3),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -460,8 +457,8 @@ class _CameraPageState extends State<CameraPage>
       margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
         color: isActive 
-          ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
-          : Colors.black.withOpacity(0.3),
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Material(
@@ -481,7 +478,7 @@ class _CameraPageState extends State<CameraPage>
 
   // 垂直的LUT控制组件 - 减小高度适应分布式布局
   Widget _buildVerticalLutControl() {
-    return Container(
+    return const SizedBox(
       height: 60,  // 从100减小到60避免溢出
       child: LutControlWidget(),
     );
@@ -502,14 +499,14 @@ class _CameraPageState extends State<CameraPage>
   Widget _buildModeSelector() {
     return FractionalTranslation(
       // 先居中后，基于自身宽度向右平移 20%
-      translation: const Offset(0.2, 0.0),
+      translation: const Offset(0.3, 0.0),
       child: Transform.scale(
-        scale: 0.7, // 略微放大（相对原始的 80%）
+        scale: 0.6, // 略微放大（相对原始的 60%）
         alignment: Alignment.topCenter,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -534,7 +531,7 @@ class _CameraPageState extends State<CameraPage>
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(12),
             ),
           )
@@ -542,10 +539,10 @@ class _CameraPageState extends State<CameraPage>
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -575,7 +572,7 @@ class _CameraPageState extends State<CameraPage>
                   )
                 : Icon(
                     Icons.photo_library_outlined,
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     size: 24,
                   ),
           );
@@ -596,7 +593,7 @@ class _CameraPageState extends State<CameraPage>
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -629,12 +626,12 @@ class _CameraPageState extends State<CameraPage>
         height: 48,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.black.withOpacity(0.5),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
+              color: Colors.black.withValues(alpha: 0.5),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
         child: Icon(
           isRearCameraSelected 
             ? Icons.camera_front_outlined 
@@ -1336,24 +1333,26 @@ class _CameraPageState extends State<CameraPage>
     final len = (exifApp1[2] << 8) | exifApp1[3];
     if (len + 2 > exifApp1.length) return; // 2字节 marker 不计入 len
     // 验证 Exif\0\0
-    final exifHeaderStart = 4;
+    const exifHeaderStart = 4;
     if (exifApp1.length < exifHeaderStart + 6) return;
     if (!(exifApp1[exifHeaderStart] == 0x45 && // E
         exifApp1[exifHeaderStart + 1] == 0x78 && // x
         exifApp1[exifHeaderStart + 2] == 0x69 && // i
         exifApp1[exifHeaderStart + 3] == 0x66 && // f
         exifApp1[exifHeaderStart + 4] == 0x00 &&
-        exifApp1[exifHeaderStart + 5] == 0x00)) return;
+        exifApp1[exifHeaderStart + 5] == 0x00)) {
+      return;
+    }
 
     final tiffStart = exifHeaderStart + 6;
     if (exifApp1.length < tiffStart + 8) return;
     final littleEndian =
         (exifApp1[tiffStart] == 0x49 && exifApp1[tiffStart + 1] == 0x49);
     // 验证 0x002A
-    int _readU16(int off) => littleEndian
+    int readU16(int off) => littleEndian
         ? (exifApp1[off] | (exifApp1[off + 1] << 8))
         : ((exifApp1[off] << 8) | exifApp1[off + 1]);
-    int _readU32(int off) => littleEndian
+    int readU32(int off) => littleEndian
         ? (exifApp1[off] |
             (exifApp1[off + 1] << 8) |
             (exifApp1[off + 2] << 16) |
@@ -1362,7 +1361,7 @@ class _CameraPageState extends State<CameraPage>
             (exifApp1[off + 1] << 16) |
             (exifApp1[off + 2] << 8) |
             exifApp1[off + 3]);
-    void _writeU16(int off, int v) {
+    void writeU16(int off, int v) {
       if (littleEndian) {
         exifApp1[off] = (v & 0xFF);
         exifApp1[off + 1] = ((v >> 8) & 0xFF);
@@ -1372,25 +1371,25 @@ class _CameraPageState extends State<CameraPage>
       }
     }
 
-    final magic = _readU16(tiffStart + 2);
+    final magic = readU16(tiffStart + 2);
     if (magic != 0x002A) return;
-    final ifd0Offset = _readU32(tiffStart + 4);
+    final ifd0Offset = readU32(tiffStart + 4);
     final ifd0Start = tiffStart + ifd0Offset;
     if (ifd0Start + 2 > exifApp1.length) return;
-    final entryCount = _readU16(ifd0Start);
+    final entryCount = readU16(ifd0Start);
     int entryBase = ifd0Start + 2;
     const tagOrientation = 0x0112;
     for (int i = 0; i < entryCount; i++) {
       final e = entryBase + i * 12;
       if (e + 12 > exifApp1.length) break;
-      final tag = _readU16(e);
+      final tag = readU16(e);
       if (tag == tagOrientation) {
-        final type = _readU16(e + 2); // SHORT=3
-        final count = _readU32(e + 4);
+        final type = readU16(e + 2); // SHORT=3
+        final count = readU32(e + 4);
         if (type == 3 && count >= 1) {
           // 值就在 valueOffset 4 字节中（2 字节有效）
           final valueOff = e + 8;
-          _writeU16(valueOff, 1); // set to 1 (Top-left)
+          writeU16(valueOff, 1); // set to 1 (Top-left)
         }
         break;
       }
@@ -1608,8 +1607,8 @@ class _CameraPageState extends State<CameraPage>
           setState(() {
             // 获取屏幕尺寸
             final screenSize = MediaQuery.of(context).size;
-            const componentWidth = 200.0;
-            const componentHeight = 120.0;
+            const componentWidth = 220.0;
+            const componentHeight = 140.0;
             
             // 更新位置，确保不会超出屏幕边界
             _aiWidgetX = (_aiWidgetX + details.delta.dx).clamp(
@@ -1632,15 +1631,15 @@ class _CameraPageState extends State<CameraPage>
           builder: (context, child) {
             final isReadyToShoot = _aiService.readyToShoot == 1;
             final borderColor = isReadyToShoot 
-              ? Colors.green.withOpacity(0.6)
-              : Colors.white.withOpacity(0.2);
+              ? Colors.green.withValues(alpha: 0.6)
+              : Colors.white.withValues(alpha: 0.2);
             final backgroundColor = isReadyToShoot
-              ? Colors.black.withOpacity(0.8)
-              : Colors.black.withOpacity(0.7);
+              ? Colors.black.withValues(alpha: 0.8)
+              : Colors.black.withValues(alpha: 0.7);
             
             return Container(
-              width: 200,
-              height: 120,
+              width: 220,
+              height: 140,
               decoration: BoxDecoration(
                 color: backgroundColor,
                 borderRadius: BorderRadius.circular(12), // 圆角
@@ -1651,8 +1650,8 @@ class _CameraPageState extends State<CameraPage>
                 boxShadow: [
                   BoxShadow(
                     color: isReadyToShoot 
-                      ? Colors.green.withOpacity(0.3)
-                      : Colors.black.withOpacity(0.3),
+                      ? Colors.green.withValues(alpha: 0.3)
+                      : Colors.black.withValues(alpha: 0.3),
                     blurRadius: isReadyToShoot ? 12 : 8,
                     offset: const Offset(0, 2),
                   ),
@@ -1669,8 +1668,8 @@ class _CameraPageState extends State<CameraPage>
                         Icon(
                           isReadyToShoot ? Icons.check_circle : Icons.auto_awesome,
                           color: isReadyToShoot 
-                            ? Colors.green.withOpacity(0.9)
-                            : Colors.white.withOpacity(0.9),
+                            ? Colors.green.withValues(alpha: 0.9)
+                            : Colors.white.withValues(alpha: 0.9),
                           size: 16,
                         ),
                         const SizedBox(width: 4),
@@ -1678,8 +1677,8 @@ class _CameraPageState extends State<CameraPage>
                           isReadyToShoot ? '准备拍摄' : 'AI 建议',
                           style: TextStyle(
                             color: isReadyToShoot 
-                              ? Colors.green.withOpacity(0.9)
-                              : Colors.white.withOpacity(0.9),
+                              ? Colors.green.withValues(alpha: 0.9)
+                              : Colors.white.withValues(alpha: 0.9),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1700,7 +1699,7 @@ class _CameraPageState extends State<CameraPage>
                         // 添加拖拽指示图标
                         Icon(
                           Icons.drag_indicator,
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                           size: 14,
                         ),
                       ],
@@ -1715,15 +1714,59 @@ class _CameraPageState extends State<CameraPage>
                               size: 32,
                             ),
                           )
-                        : Text(
-                            _aiService.currentSuggestion,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 11,
-                              height: 1.3,
-                            ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // LUT建议
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.palette,
+                                    color: Colors.blue.withValues(alpha: 0.8),
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      _aiService.currentLutSuggestion,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.8),
+                                        fontSize: 10,
+                                        height: 1.2,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              // 取景建议
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.orange.withValues(alpha: 0.8),
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      _aiService.currentFramingSuggestion,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.8),
+                                        fontSize: 10,
+                                        height: 1.2,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                     ),
                   ],
